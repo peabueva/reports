@@ -298,7 +298,7 @@
   .rep__body { flex: 1 1 0; min-height: 0; margin-top: 0; background: #fff; overflow: auto; }
 
   /* Таблица: колонки как в макете «Расчеты по эквайрингу» (Figma 33184:306168): На начало (1) · Обороты (2) · На конец (1) */
-  .rt { padding-top: 9px; display: grid; grid-template-columns: 20px 461px 100px 109px 109px 101px; }
+  .rt { padding-top: 9px; display: grid; grid-template-columns: 20px 381px 120px 128px 128px 123px; }   /* колонки сумм шире, чем в макете, — суммы не прилипают к разделителям */
   .rt > div { box-sizing: border-box; white-space: nowrap; }
   .rt__h { font-size: 12px; color: var(--text-label_text-color, #8991a9); }
   .rt__grp { grid-row: 1; text-align: center; height: 24px; line-height: 15px; padding-top: 6px !important; }
@@ -314,14 +314,19 @@
   .rt__row > .rt__num:last-child { padding-right: 12px; }
   .rt__num small { font-size: 12px; color: #656c87; }
   .rt__num small.is-zero { color: #ccc; }
+  .is-neg, .is-neg small, .is-neg small.is-zero { color: #c2140a; /* @danger_text-color: отрицательный остаток */ }
   .rt__mark { position: relative; }
   .rt__row.is-active .rt__mark::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; border-radius: 0 2px 2px 0;
     background: #f47843; /* нет токена: маркер активной строки */ }
   .rt__name { font-size: 15px; color: #000; overflow: hidden; padding-right: 6px; cursor: pointer; }
   .rt__name span { overflow: hidden; text-overflow: ellipsis; }
   .rt__inn { margin-left: 8px; font-size: 12px; color: #999; flex: none; }
-  .rt__exp { width: 20px; height: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
-  .rt__exp::before { content: ""; border-style: solid; border-width: 5px 0 5px 7px; border-color: transparent transparent transparent #313e78; /* нет токена: как треугольник на проде */ }
+  /* стрелка раскрытия — иконка «DownFill» из макета (Ui базовый набор / Навигация стрелки), 16×16 */
+  .rt__exp { width: 16px; height: 16px; margin-right: 4px; flex: none; cursor: pointer; transform: rotate(-90deg);
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 16 16'%3E%3Cpath d='M3 6H13V7L8.5 11H7.5L3 7V6Z' fill='%23313E78'/%3E%3C/svg%3E") center / 16px no-repeat; }
+  .rt__exp.is-open { transform: none; }
+  /* группировка по компаниям: компания — узел с суммами, договоры — вложенные строки */
+  .rt__row--child .rt__name { padding-left: 40px; } /* как в макете: вложенный уровень сдвинут на 20px относительно названия родителя */
   .rt__row:hover > div { background: var(--background-hover_background-color, #f5f7fa); }
   .rt__head-line { grid-column: 1 / -1; margin-top: -1px; border-bottom: 1px solid #eaeaea; }
 
@@ -403,6 +408,9 @@
   .cj__node b { font-weight: 400; } .cj__node.is-open b { font-weight: 600; }
   .cj__node em { font-style: normal; color: #c2140a; margin-left: 8px; }
   .cj__node.is-clean em { color: #298e3c; }
+  /* вложенный уровень (договор внутри компании) и его ошибки — сдвиг на ширину стрелки (30px), как в «Ошибках от госоргана» */
+  .cj__node--sub { padding-left: 34px; }
+  .cj__node--sub ~ .cj__rec { padding-left: 70px; }
   .cj__rec { display: flex; gap: 8px; padding: 6px 12px 6px 40px; cursor: pointer; position: relative; }
   .cj__rec:hover { background: #f5f7fa; }
   .cj__rec.is-sel { background: #fff4f3; }
@@ -414,14 +422,35 @@
   .cj__main a, .cj__hint a { color: inherit; text-decoration: underline; cursor: pointer; }
   .cj__hint { color: #8991a9; /* @label_text-color */ margin-top: 2px; }
   .cj__hint ul { margin: 2px 0 0; padding-left: 18px; }
-  .cj__btns { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
-  .cj__btn { height: 24px; padding: 0 10px; border-radius: 100px; border: 1px solid #c3c8d6; background: #fff; font: inherit; font-size: 13px; color: #313e78; cursor: pointer; }
-  .cj__btn:hover { border-color: #8991a9; }
+  /* общая сетка списка: колонка текста по самому длинному тексту, сумма сразу за ней; суммы внутри списка — на одной вертикали */
+  .cj__pays { margin-top: 4px; display: grid; grid-template-columns: max-content auto; justify-content: start; column-gap: 12px; }
+  /* сумма — отдельной колонкой справа, назначение под ней не заходит */
+  .cj__pay { display: contents; cursor: pointer; }
+  .cj__pays > .cj__pay > div { padding: 3px 0; cursor: pointer; }
+  .cj__pay-txt, .cj__pay-name { max-width: 440px; }   /* длинное назначение обрезаем, чтобы сумма не уезжала */
+  .cj__pay-sum { grid-column: 2; text-align: right; color: #999; /* @unaccented_text-color */ white-space: nowrap; }
+  .cj__pay-txt { grid-column: 1; }
+  .cj__pay-name { grid-column: 1; color: #000; }   /* плательщик над назначением, сумма — в его строке */
+  .cj__rec.is-done .cj__pay-sum { color: #000; /* платежи проведены — сумма обычным цветом, как у проведенного документа */ } .cj__pay-sum small { font-size: 12px; color: #ccc; /* @readonly_text-color */ }
+  .cj__pay-txt { color: #999; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* платеж с датой: дата черным, как у документов; назначение обрезается многоточием */
+  .cj__pay-txt--d { display: flex; gap: 8px; }
+  .cj__pay-txt--d > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+  .cj__pay-txt--d .cj__doc-date { flex: none; }
+  /* документы под записью: дата (красная — не проведен), тип документа, точка продаж; сумма — в той же колонке, что у платежей */
+  .cj__doc-txt { grid-column: 1; display: flex; gap: 8px; white-space: nowrap; overflow: hidden; }
+  .cj__doc-date { color: #000; min-width: 48px; }
+  .cj__doc-type { color: #313e78; font-weight: 600; }
+  .cj__doc-place { color: #999; /* @unaccented_text-color */ overflow: hidden; text-overflow: ellipsis; }
+  /* действия — ui-kit Button, вид link, style link: текст без отступов, при наведении темнее и с подчеркиванием; стоят в строке после текста ошибки */
+  .cj__acts { margin-left: 8px; display: inline-flex; gap: 12px; }
+  .cj__link { padding: 0; border: 0; background: none; font: inherit; color: #2562aa; /* --text-link_text-color */ cursor: pointer; }
+  .cj__link:hover { color: #153f6f; /* --text-link_hover_text-color */ text-decoration: underline; }
   .cj__eye { width: 24px; height: 19px; flex: none; display: flex; align-items: center; justify-content: center; color: #8991a9; opacity: 0; }
   .cj__eye svg { width: 16px; height: 16px; }
   .cj__rec:hover .cj__eye, .cj__rec.is-ign .cj__eye { opacity: 1; }
   .cj__rec.is-ign .cj__main, .cj__rec.is-done .cj__main { color: #8991a9; text-decoration: line-through; text-decoration-color: #000; }
-  .cj__rec.is-done .cj__btns, .cj__rec.is-ign .cj__btns { display: none; }
+  .cj__rec.is-done .cj__acts, .cj__rec.is-ign .cj__acts { display: none; }
   .cj__rec.is-done .cj__eye { display: none; }
   /* выполняется проверка: шаги маршрута как этапы проверки */
   .cj-run { padding: 10px 16px; }
@@ -505,32 +534,62 @@ const paymentsPage = () => `${ACC}
 
 /* ---------- Отчет «Обороты и сальдо по счету» (данные с прода, 25 ноя) ---------- */
 // строка: [наименование, ИНН | '', дебет оборотов, кредит оборотов, дебет сальдо конечного]; суммы — 'рубли.копейки'
-const REP_TOTAL = ['30 573 013.29', '30 531 474.72', '41 538.57'];
+// суммы подобраны под ошибки из чек-листа «Проверка оборотов по 57-03»; минус в «На конец» — поступило больше, чем учтено оплат
+const REP_TOTAL = ['30 565 513.29', '18 584 086.56', '11 981 426.73'];
 const REP_ROWS = {
   contracts: [
-    ['Договор эквайринга № 11', '', '15 216 415.29', '15 193 757.22', '22 658.07'],
-    ['Сбербанк', '', '611 420.00', '597 539.50', '13 880.50'],
-    ['Новый договор', '', '5 120.00', '120.00', '5 000.00'],
-    ['Договор эквайринга №133', '', '11 803 000.00', '11 803 000.00', ''],
-    ['Договор эквайринга № 123', '', '1 544 000.00', '1 544 000.00', ''],
-    ['Сбербанк', '', '805 989.00', '805 989.00', ''],
-    ['Сбербанк', '', '451 000.00', '451 000.00', ''],
-    ['Новый договор', '', '136 069.00', '136 069.00', ''],
+    ['Договор эквайринга № 11', '', '16 760 415.29', '15 216 415.29', '1 544 000.00'],   // 1 544 000 поступлений лежат в «Без аналитики»
+    ['Сбербанк', '', '611 420.00', '597 539.50', '13 880.50'],                         // эквайер еще не перечислил — норма
+    ['Новый договор', '', '5 120.00', '61 320.00', '-56 200.00'],                     // договор создан позже начала оплат
+    ['Райффайзенбанк', '', '11 803 000.00', '', '11 803 000.00'],             // нет поступлений
+    ['Договор эквайринга № 123', '', '', '', ''],                                     // убран из демо (компания ОСНОва удалена); строка оставлена, чтобы не сдвигать индексы
+    ['Сбербанк', '', '', '', ''],                                                     // убран из демо (компания АУСН-Сервис удалена); строка оставлена, чтобы не сдвигать индексы
+    ['Сбербанк', '', '', '', ''],                                                     // то же
+    ['Новый договор', '', '128 569.00', '136 069.00', '-7 500.00'],                    // выручка не проведена / не совпадает со сменой
+    ['Без аналитики', '', '', '1 544 000.00', '-1 544 000.00'],                         // поступления без договора
   ],
   companies: [
-    ['Торговая точка, ООО', '9312626209', '15 216 415.29', '15 193 757.22', '22 658.07'],
-    ['Упрощенный Иван Иванович, ИП', '931563254629', '611 420.00', '597 539.50', '13 880.50'],
-    ['Патентный Павел Павлович, ИП', '932563568987', '5 120.00', '120.00', '5 000.00'],
-    ['Доходный Герман Исаакович, ИП', '760440094864', '11 939 069.00', '11 939 069.00', ''],
-    ['ОСНОва, ООО', '2145492416', '1 544 000.00', '1 544 000.00', ''],
-    ['АУСН-Сервис, ООО', '2795300175', '805 989.00', '805 989.00', ''],
-    ['Выгодный НДС, ООО', '5875752574', '451 000.00', '451 000.00', ''],
+    ['Торговая точка, ООО', '', '15 216 415.29', '15 193 757.22', '22 658.07'],
+    ['Столовая Юность', '', '611 420.00', '597 539.50', '13 880.50'],
+    ['Ресторан Море', '', '5 120.00', '120.00', '5 000.00'],
+    ['Доходный дом', '', '11 939 069.00', '11 939 069.00', ''],
+    ['ОСНОва, ООО', '', '1 544 000.00', '1 544 000.00', ''],
+    ['АУСН-Сервис, ООО', '', '805 989.00', '805 989.00', ''],
+    ['Вкусное место', '', '451 000.00', '451 000.00', ''],
   ],
 };
+// группировка «Наша компания → договоры»: [компания, ИНН, индексы строк договоров]
+const COMPANIES = [
+  ['Вкусное место', '5875752574', [0, 1, 8]],
+  ['Ресторан Море', '932563568987', [2]],
+  ['Доходный дом', '760440094864', [3]],
+  ['Столовая Юность', '931563254629', [7]],
+];
+const grpClosed = new Set();   // свернутые компании
+const POS = {}; COMPANIES.forEach(([, , ids]) => ids.forEach(i => { POS[i] = Object.keys(POS).length; }));   // порядок строк на экране
+const num = (v) => v ? (v[0] === '-' ? -1 : 1) * parseFloat(v.replace('-', '').replace(/\s/g, '')) : 0;
+const fmt = (n) => { if (Math.abs(n) < 0.005) return ''; const [r, k] = Math.abs(n).toFixed(2).split('.'); return (n < 0 ? '-' : '') + r.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '.' + k; };
 let repMode = 'contracts', repActive = -1;
-const money = (v, cls = '') => { if (!v) return ''; const [r, k] = v.split('.'); return `${r}<small class="${k === '00' ? 'is-zero' : cls}">.${k}</small>`; };
+// что меняется в строках отчета после исправления ошибки: { строка: [Оплачено, Поступило] } (пусто — не менять); also — ошибки, которые исправляются вместе
+const FIX = {
+  late:  { rows: { 2: ['61 320.00'] } },                                         // создана «Выручка розницы» за 1-9 ноября
+  nocr:  { rows: { 3: [, 8000000] } },                                           // загружена выписка за 14-15 ноября (+, число — прибавить)
+  nopost: { rows: { 3: [, 3803000] } },                                          // проведены 3 платежа
+  bez:   { rows: { 0: [, 1544000], 8: [, ''] } },                                // поступления из «Без аналитики» ушли на договор № 11
+  post:  { rows: { 7: ['136 069.00'] } },                                        // «Выручка розницы» за 14 ноября проведена
+};
+const repRow = (i) => { const r = REP_ROWS[repMode][i]; if (repMode !== 'contracts') return r;
+  let [name, inn, d, c] = r;
+  const done = chk.st === 'ok' ? Object.keys(FIX) : chk.done;   // «Ошибок нет» — показываем данные после всех исправлений
+  done.forEach(id => { const f = FIX[id]?.rows[i]; if (f) { const set = (v, x) => v === undefined ? x : typeof v === 'number' ? fmt(num(x) + v) : v; d = set(f[0], d); c = set(f[1], c); } });
+  return [name, inn, d, c, fmt(num(d) - num(c))]; };
+const repTotal = () => repMode !== 'contracts' ? REP_TOTAL
+  : [2, 3, 4].map(k => fmt(REP_ROWS.contracts.reduce((t, _, i) => t + num(repRow(i)[k]), 0)));
+const isEmptyRow = (i) => !repRow(i).slice(2).some(Boolean);
+const money = (v, cls = '') => { if (!v) return ''; const neg = v[0] === '-'; const [r, k] = (neg ? v.slice(1) : v).split('.');
+  const html = `${neg ? '−' : ''}${r}<small class="${k === '00' ? 'is-zero' : cls}">.${k}</small>`; return neg ? `<span class="is-neg">${html}</span>` : html; };
 const repTable = () => {
-  const tree = repMode === 'companies';
+  const tree = repMode === 'companies', tot = repTotal();
   const head = `<div class="rt__h rt__grp" style="grid-column:1/3"></div>
     <div class="rt__h rt__grp rt__grp--r rt__sep" style="grid-column:3/4">На начало</div>
     <div class="rt__h rt__grp rt__sep" style="grid-column:4/6">Обороты</div>
@@ -538,14 +597,22 @@ const repTable = () => {
     <div class="rt__h rt__sub" style="grid-column:1/3"></div>
     ${[['Ждем<br>от банка', ' rt__sep'], ['Оплачено<br>покупателями', ''], ['Поступило<br>от банка', ' rt__sep'], ['Ждем<br>от банка', ' rt__sub--last']].map(([t, c]) => `<div class="rt__h rt__sub${c}">${t}</div>`).join('')}
     <div class="rt__tot" style="grid-column:1/3"></div><div class="rt__tot rt__sep"></div>
-    <div class="rt__tot">${money(REP_TOTAL[0])}</div><div class="rt__tot rt__sep">${money(REP_TOTAL[1])}</div><div class="rt__tot rt__tot--last">${money(REP_TOTAL[2])}</div>
+    <div class="rt__tot">${money(tot[0])}</div><div class="rt__tot rt__sep">${money(tot[1])}</div><div class="rt__tot rt__tot--last">${money(tot[2])}</div>
     <div class="rt__head-line"></div>`;
   const errRow = chk.st === 'found' && chk.sel >= 0 ? ORDER()[chk.sel].row : -1;
-  const rows = REP_ROWS[repMode].map(([name, inn, d, c, end], i) => `<div class="rt__row${i === repActive ? ' is-active' : ''}${i === errRow ? ' is-err' : ''}" data-row="${i}">
-      <div class="rt__mark"></div>
-      <div class="rt__name">${tree ? '<i class="rt__exp" data-toast="Раскрытие компании — в следующих пунктах"></i>' : ''}<span>${name}</span>${inn ? `<span class="rt__inn">${inn}</span>` : ''}</div>
+  const line = (cls, attrs, nameHTML, d, c, end) => `<div class="rt__row${cls}" ${attrs}>
+      <div class="rt__mark"></div><div class="rt__name">${nameHTML}</div>
       <div class="rt__num rt__sep"></div>
-      <div class="rt__num">${money(d)}</div><div class="rt__num rt__sep">${money(c)}</div><div class="rt__num">${money(end)}</div></div>`).join('');
+      <div class="rt__num">${money(d)}</div><div class="rt__num rt__sep">${money(c)}</div><div class="rt__num">${money(end)}</div></div>`;
+  const contract = (i, child) => { const [name, inn, d, c, end] = repRow(i);
+    return line(`${child ? ' rt__row--child' : ''}${i === repActive ? ' is-active' : ''}${i === errRow ? ' is-err' : ''}`, `data-row="${i}"`,
+      `${tree ? '<i class="rt__exp" data-toast="Раскрытие компании — в следующих пунктах"></i>' : ''}<span>${name}</span>${inn ? `<span class="rt__inn">${inn}</span>` : ''}`, d, c, end); };
+  const rows = repMode === 'contracts'
+    ? COMPANIES.map(([co, inn, all], g) => { const open = !grpClosed.has(g), ids = all.filter(i => !isEmptyRow(i));   // пустая строка (напр. «Без аналитики») пропадает
+        const sum = (k) => fmt(ids.reduce((t, i) => t + num(repRow(i)[k]), 0));
+        return line(' rt__row--grp', `data-grp="${g}"`, `<i class="rt__exp${open ? ' is-open' : ''}"></i><span>${co}</span>`, sum(2), sum(3), sum(4))
+          + (open ? ids.map(i => contract(i, true)).join('') : ''); }).join('')
+    : REP_ROWS[repMode].map((_, i) => contract(i, false)).join('');
   return `<div class="rt">${head}${rows}</div>`;
 };
 const TB = [['&#xEA2F;', 'Развернуть'], ['Σ<sub>↓</sub>', 'Итоги', 'sum'], ['&#xE633;', 'Печать'], ['&#xEA31;', 'Выгрузить'], ['&#xE6A7;', 'Ссылка'], ['&#xEA8A;', 'Развернуть все'], ['&#xE644;', 'Отметить']];
@@ -554,21 +621,45 @@ const TB = [['&#xEA2F;', 'Развернуть'], ['Σ<sub>↓</sub>', 'Итог
 const CHECKS = ['Проверяем начальные остатки', 'Проверяем оплаты от покупателей', 'Сверяем оплаты с поступлениями',
   'Проверяем поступления от банка', 'Проверяем договор в поступлениях', 'Сверяем поступления с оплатами'];
 // найденное: row — строка отчета (сущность), null — узел «Общее»; lvl: err — значительная ошибка, warn — предупреждение
+const DL = (t) => `<a data-toast="Список документов — в демо не входит">${t}</a>`;
+// список платежей в записи журнала: назначение серым в одну строку, сумма справа (банк — в названии договора, не повторяем)
+// дата, совпадающая с датой предыдущей строки, не повторяется (место под нее остается)
+const sameDate = (list, i, k) => i > 0 && list[i - 1][k] === list[i][k];
+const PAYS = (list) => `<div class="cj__pays">${list.map(([n, sum, t, d], i) => { const [r, k] = sum.split('.'); const S = `<div class="cj__pay-sum">${r}<small>.${k}</small></div>`;   // сумма — в строке плательщика, а без него — в строке назначения (порядок важен для сетки)
+  return `<div class="cj__pay" data-toast="Открыт платеж">${n ? `<div class="cj__pay-name">${n}</div>` : ''}${n ? S : ''}${d ? `<div class="cj__pay-txt cj__pay-txt--d"><span class="cj__doc-date">${sameDate(list, i, 3) ? '' : d}</span><span>${t}</span></div>` : `<div class="cj__pay-txt">${t}</div>`}${n ? '' : S}</div>`; }).join('')}</div>`;
+// список документов в записи журнала: дата, тип, точка продаж, сумма справа
+const DOCS = (list) => `<div class="cj__pays">${list.map(([d, type, place, sum], i) => { const [r, k] = sum.split('.');
+  return `<div class="cj__pay" data-toast="Открыт документ"><div class="cj__doc-txt"><span class="cj__doc-date">${sameDate(list, i, 0) ? '' : d}</span><span class="cj__doc-type">${type}</span><span class="cj__doc-place">${place}</span></div><div class="cj__pay-sum">${r}<small>.${k}</small></div></div>`; }).join('')}</div>`;
 const ISSUES = [
-  { id: 'kom', row: 0, step: 5, lvl: 'err', text: 'Поступлений от эквайера меньше, чем оплат, на 22 658,07',
-    hint: 'В <a data-toast="Список платежей без комиссии — в демо не входит">12 платежах</a> «Поступление от эквайера» не заполнена комиссия. Если эквайер удерживает комиссию, укажите ее в платеже.',
-    btns: [['Заполнить комиссию', 'Платежи без комиссии открыты списком']] },
-  { id: 'wait', row: 1, step: 5, lvl: 'warn', text: 'Поступлений от эквайера меньше, чем оплат, на 13 880,50',
-    hint: 'Эквайер еще не перечислил деньги: после последних оплат прошло меньше двух рабочих дней. Дождитесь поступления.', btns: [] },
-  { id: 'none', row: 2, step: 3, lvl: 'err', text: 'Нет поступлений от эквайера по оплатам на 5 000,00',
-    hint: 'Возможные причины:<ul><li>не загружена выписка за период отчета;</li><li>у платежа неверный тип операции — нужен «Поступление от эквайера»;</li><li>платежи не проведены.</li></ul>',
-    btns: [['Загрузить банковскую выписку', 'Доп. маршрут «Загрузить банковскую выписку»']] },
-  { id: 'dog', row: null, step: 4, lvl: 'err', text: 'В <a data-toast="Список платежей без договора — в демо не входит">2 платежах</a> «Поступление от эквайера» не заполнен договор эквайринга',
-    hint: 'Укажите договор вручную. Чтобы он определялся автоматически, проверьте в договоре номер (мерчант из назначения платежа), ИНН и КПП банка и дату начала.',
-    btns: [['Создать договор', 'Доп. маршрут «Создать договор эквайринга»'], ['Создать Выручку розницы', 'Доп. маршрут «Создать Выручку розницы»']] },
+  { id: 'late', row: 2, step: 1, lvl: 'err', text: 'Нет «Выручки розницы» за 1-9 ноября',
+    hint: 'Договор создан 10 ноября, а оплаты были раньше. Создайте документы за эти дни',
+    btns: [['Создать выручку', 'Доп. маршрут «Создать Выручку розницы»']] },
+  { id: 'nocr', row: 3, step: 3, lvl: 'err', text: 'Не загружена выписка за 14-15 ноября',
+    hint: 'Поступления от эквайера за эти дни не попали в учет',
+    btns: [['Загрузить выписку', 'Доп. маршрут «Загрузить банковскую выписку»']] },
+  { id: 'nopost', row: 3, step: 3, lvl: 'err', text: 'Не проведены платежи',
+    hint: PAYS([
+      ['', '1 250 000.00', '1076077911 IPS MA0006598061 Оплата счета №26112519591 от 25.11.26 (QR СБП2503481722)', '12 ноя'],
+      ['', '1 553 000.00', '1076078020 IPS MA0006598061 Оплата получения электронной подписи по счёту №26110217508 от 02.11.26 (QR СБП2503481790)', '12 ноя'],
+      ['', '1 000 000.00', '1076078154 IPS MA0006598061 Оплата счета №26111311042 от 13.11.26 (QR СБП2503481835)', '12 ноя'],
+    ]),
+    btns: [['Провести все (3)', 'Платежи проведены']] },
+  { id: 'post', row: 7, step: 2, lvl: 'err', text: 'Не проведена «Выручка розницы»',
+    hint: DOCS([
+      ['13 ноя', 'Выручка розницы', 'Гастромаркет Мили', '1 200.00'],
+      ['12 ноя', 'Выручка розницы', 'Мили Новосибирск', '6 300.00'],
+    ]),
+    btns: [['Провести', 'Документ проведен']] },
+  { id: 'bez', row: 8, step: 4, lvl: 'err', text: 'В «Поступлении от эквайера» не указан договор эквайринга',
+    hint: PAYS([
+      ['Сбербанк, ПАО', '512 000.00', 'Зачисление средств по операциям эквайринга. Мерчант №771000058'],
+      ['Сбербанк, ПАО', '498 500.00', 'Зачисление средств по операциям эквайринга. Мерчант №771000058'],
+      ['Сбербанк, ПАО', '533 500.00', 'Зачисление средств по операциям эквайринга. Мерчант №771000058'],
+    ]),
+    btns: [['Указать договор', 'Выбор договора для 3 платежей']] },
   { id: 'ost', row: null, step: 0, lvl: 'warn', text: 'Нет начального остатка по счету 57-03',
-    hint: 'Если на дату перехода в Saby эквайер еще не перечислил часть денег, введите эту сумму. Если нет — скройте запись глазом.',
-    btns: [['Ввести начальные остатки', 'Доп. маршрут «Ввести начальные остатки»']] },
+    hint: 'Если на дату перехода в Saby эквайер еще не перечислил часть денег, введите эту сумму',
+    btns: [['Ввести остатки', 'Доп. маршрут «Ввести начальные остатки»']] },
 ];
 const CHK0 = () => ({ st: 'off', open: true, low: false, sel: -1, prog: 0, done: new Set(), ign: new Set(), closed: new Set() });
 let chk = CHK0(), runTimer;
@@ -587,7 +678,7 @@ const SVG = {
 };
 const isActive = (x) => !chk.done.has(x.id) && !chk.ign.has(x.id);
 // порядок записей = порядок в дереве: строки отчета сверху вниз, затем «Общее»
-const ORDER = () => [...ISSUES].sort((a, b) => (a.row ?? 99) - (b.row ?? 99));
+const ORDER = () => [...ISSUES].sort((a, b) => (a.row == null ? 99 : POS[a.row]) - (b.row == null ? 99 : POS[b.row]));
 function cjState() {
   if (chk.st === 'run') return { cls: '', ic: '<span class="cj__ic24 cj__ic24--spin">&#xE62C;</span>', title: 'Выполняется проверка отчета', cnt: '' };
   if (chk.st === 'ok') return { cls: 'cj--ok', ic: `<span class="cj__ic24">${SVG.ok}</span>`, title: 'Ошибок нет', cnt: '' };
@@ -601,8 +692,9 @@ const rec = (x) => {
   const i = ORDER().indexOf(x);
   const cls = (chk.sel === i ? ' is-sel' : '') + (chk.done.has(x.id) ? ' is-done' : '') + (chk.ign.has(x.id) ? ' is-ign' : '');
   return `<div class="cj__rec${cls}" data-issue="${i}"><span class="cj__ic">${recIcon(x)}</span>
-    <div class="cj__txt"><div class="cj__main">${x.text}</div><div class="cj__hint">${x.hint}</div>
-      ${x.btns.length ? `<div class="cj__btns">${x.btns.map(([t, m]) => `<button class="cj__btn" type="button" data-fix="${x.id}" data-msg="${m}">${t}</button>`).join('')}</div>` : ''}</div>
+    <div class="cj__txt"><div class="cj__main">${x.text}${x.btns.length ? `<span class="cj__acts">${x.btns.map(([t, m, k]) => { const lbl = t[0].toLowerCase() + t.slice(1);   // действие — ссылкой, с маленькой буквы
+        return k === 'skip' ? `<button class="cj__link" type="button" data-ign="${x.id}">${lbl}</button>` : `<button class="cj__link" type="button" data-fix="${x.id}" data-msg="${m}">${lbl}</button>`; }).join('')}</span>` : ''}</div>
+      <div class="cj__hint">${x.hint}</div></div>
     <span class="cj__eye" data-ign="${x.id}" title="${chk.ign.has(x.id) ? 'Учитывать' : 'Не учитывать'}">${SVG.eye}</span></div>`;
 };
 const cjTree = () => {
@@ -610,8 +702,18 @@ const cjTree = () => {
   const groups = [];
   ORDER().forEach(x => { const k = x.row ?? 'common'; let g = groups.find(g => g.k === k);
     if (!g) groups.push(g = { k, name: x.row == null ? 'Общее' : rows[x.row][0], items: [] }); g.items.push(x); });
-  return groups.map(g => { const open = !chk.closed.has(String(g.k)); const n = g.items.filter(isActive).length;
-    return `<div class="cj__node${open ? ' is-open' : ''}${n ? '' : ' is-clean'}" data-node="${g.k}"><i></i><b>${g.name}</b><em>${n || '✓'}</em></div>${open ? g.items.map(rec).join('') : ''}`; }).join('');
+  const node = (k, name, items, cls, body) => { const open = !chk.closed.has(String(k)); const n = items.filter(isActive).length;
+    return `<div class="cj__node${cls}${open ? ' is-open' : ''}${n ? '' : ' is-clean'}" data-node="${k}"><i></i><b>${name}</b><em>${n || '✓'}</em></div>${open ? body() : ''}`; };
+  const leaf = (g, cls) => node(g.k, g.name, g.items, cls, () => g.items.map(rec).join(''));
+  if (repMode !== 'contracts') return groups.map(g => leaf(g, '')).join('');
+  // иерархия как в отчете: компания → договор → ошибки
+  const out = []; let cur = null;
+  groups.forEach(g => { const ci = g.k === 'common' ? -1 : COMPANIES.findIndex(([, , ids]) => ids.includes(g.k));
+    if (ci < 0) { out.push(g); cur = null; return; }
+    if (!cur || cur.ci !== ci) out.push(cur = { ci, list: [] }); cur.list.push(g); });
+  return out.map(o => o.ci === undefined ? leaf(o, '')
+    : COMPANIES[o.ci][2].length === 1 ? leaf({ ...o.list[0], name: `${COMPANIES[o.ci][0]}, ${o.list[0].name}` }, '')   // у компании один договор — одним узлом через запятую
+    : node('c' + o.ci, COMPANIES[o.ci][0], o.list.flatMap(g => g.items), '', () => o.list.map(g => leaf(g, ' cj__node--sub')).join(''))).join('');
 };
 const cjRun = () => {
   const found = ISSUES.filter(x => x.step < chk.prog).length;
@@ -649,6 +751,7 @@ function runCheck() {
 }
 function selectIssue(i) {
   const order = ORDER(); if (i < 0 || i >= order.length) return;
+  { const r = order[i].row; const g = COMPANIES.findIndex(([, , ids]) => ids.includes(r)); if (g >= 0) { grpClosed.delete(g); chk.closed.delete('c' + g); } chk.closed.delete(String(r ?? 'common')); }
   chk.sel = i; const x = order[i]; repActive = x.row ?? -1; drawReport();
   const r = repEl.querySelector(`.rt__row[data-row="${repActive}"] > div`);   // подскролл сущности в отчете
   if (r) { const b = repEl.querySelector('.rep__body'); b.scrollTop = Math.max(0, r.offsetTop - 120); }
@@ -690,7 +793,7 @@ const CHECK_SCN = {
   'чек_старт':   () => ({ st: 'start' }),
   'чек_идет':    () => ({ st: 'run', prog: 4 }),
   'чек_ошибки':  () => ({ st: 'found' }),
-  'чек_часть':   () => ({ st: 'found', done: new Set(['kom', 'dog']), ign: new Set(['wait']) }),
+  'чек_часть':   () => ({ st: 'found', done: new Set(['late', 'post']), ign: new Set(['ost']) }),
   'чек_свернут': () => ({ st: 'found', open: false, sel: 0 }),
   'чек_ок':      () => ({ st: 'ok' }),
 };
@@ -711,13 +814,13 @@ function render(id) {
   chk = Object.assign(CHK0(), CHECK_SCN[id] ? CHECK_SCN[id]() : {});
   const mode = REPORTS[id] || (CHECK_SCN[id] && 'contracts');
   repEl.hidden = !mode;
-  if (mode) { repMode = mode; repActive = -1; repEl.innerHTML = ''; drawReport();   // новый сценарий — прокрутка с нуля
+  if (mode) { repMode = mode; repActive = -1; grpClosed.clear(); repEl.innerHTML = ''; drawReport();   // новый сценарий — прокрутка с нуля
  if (chk.sel >= 0) selectIssue(chk.sel); }
 }
 stage.addEventListener('click', (e) => {
   const on = (a) => e.target.closest(`[${a}]`);
   let el;
-  if ((el = on('data-fix'))) { toast(el.dataset.msg); chk.done.add(el.dataset.fix); drawReport(); return; }   // демо: после перехода считаем исправленным
+  if ((el = on('data-fix'))) { toast(el.dataset.msg); const id = el.dataset.fix; [id, ...(FIX[id]?.also || [])].forEach(x => chk.done.add(x)); drawReport(); return; }   // демо: после перехода считаем исправленным
   if ((el = on('data-ign'))) { const id = el.dataset.ign; chk.ign.has(id) ? chk.ign.delete(id) : chk.ign.add(id); drawReport(); return; }
   if ((el = on('data-toast'))) { toast(el.dataset.toast); return; }
   if (on('data-close')) { frame.select('оплаты'); return; }
@@ -730,6 +833,7 @@ stage.addEventListener('click', (e) => {
   if (on('data-low')) { chk.low = !chk.low; drawReport(); return; }
   if ((el = on('data-node'))) { const k = el.dataset.node; chk.closed.has(k) ? chk.closed.delete(k) : chk.closed.add(k); drawReport(); return; }
   if ((el = on('data-issue'))) { selectIssue(+el.dataset.issue); return; }
+  if ((el = on('data-grp'))) { const g = +el.dataset.grp; grpClosed.has(g) ? grpClosed.delete(g) : grpClosed.add(g); drawReport(); return; }
   const row = on('data-row'); if (row) { repActive = +row.dataset.row;   // клик по строке с ошибкой выбирает ее в журнале
     const i = chk.st === 'found' ? ORDER().findIndex(x => x.row === repActive) : -1; if (i >= 0) { selectIssue(i); return; } drawReport(); }
 });
@@ -752,8 +856,8 @@ frame = DemoFrame.mount({
     { group: 'Эквайринг', hidden: true, items: [ { id: 'оплаты', title: 'Оплаты (фон)' } ] },   // скрыто с панели, нужно для «Закрыть»
   ],
   links: [
-    { title: 'Прод: Эквайринг → Оплаты', href: 'https://bu.sabyd.ru/page/acquiring-main-payments' },
-    { title: 'Демо главной Эквайринга', href: 'https://peabueva.github.io/acquiring/' },
+    { title: 'Макет: Расчеты с эквайером', href: 'https://www.figma.com/proto/GT0D3bbOekTyLM6KqvElaz/Главная-Эквайринга?page-id=449%3A35963&node-id=16950-247329&p=f&viewport=21152%2C-51481%2C1.4&t=vnE4BxIVAd5JeWJy-8&scaling=min-zoom&content-scaling=fixed&starting-point-node-id=16950%3A249402&show-proto-sidebar=1&hide-ui=1' },
+    { title: 'Макет: Компонент проверки отчета', href: 'https://axure.tensor.ru/ereport8_inter/%D0%BF%D1%80%D0%BE%D0%B2%D0%B5%D1%80%D0%BA%D0%B0_%D0%BE%D1%82%D1%87%D0%B5%D1%82%D0%B0.html' },
   ],
   value: { scenario: 'чек_старт', variant: 'кн_primary_обводка' },
   onChange({ scenario, variant }) { render(variant || scenario); },
