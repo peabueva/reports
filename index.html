@@ -1,0 +1,764 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Отчеты Эквайринга — демо</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/MarieSmi/ui-kit@1.20.1/tokens.css">
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/MarieSmi/ui-kit@1.20.1/components/demo-frame/demo-frame.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/MarieSmi/ui-kit@1.20.1/components/switch/switch.css">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: var(--background-default_background-color, #fff);
+    font-family: var(--font-font-family-default), sans-serif;
+    color: var(--text-text-color);
+  }
+  .stage {
+    position: absolute; left: 0; top: 0; width: 1024px; height: 768px; overflow: hidden;
+    box-shadow: 0 0 0 1px var(--border-pale_border-color);
+    background: #e9eaee; /* нет токена: подложка сцены, компонент показан отдельно */
+  }
+
+  /* Тулбар справа (Тулбар Saby Trade) — в ui-kit нет, по макету */
+  .side-toolbar { flex: none; width: 52px; display: flex; flex-direction: column; justify-content: space-between; align-items: center; padding: 6px 0; }
+  .side-toolbar__bottom { display: flex; flex-direction: column; gap: 16px; align-items: center; }
+  .round {
+    box-sizing: border-box; width: 32px; height: 32px; border-radius: 16px; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; background: var(--background-contrast-pale_color);
+    border: 1px solid var(--border-pale_border-color); color: var(--icon-icon-color); font-family: "cbuc-icons"; font-size: 16px;
+  }
+  .round--date { font-family: var(--font-font-family-default); line-height: 10px; }
+  .round--date b { font-size: 14px; font-weight: 400; }
+  .round--date small { font-size: 12px; }
+  .round--help { background: var(--background-info_hover_background-color); border-color: #e1dbff; /* нет токена */
+    color: var(--icon-info_icon-color); font-family: var(--icon-font-family-m_icon_font-family); font-size: 24px; }
+
+  /* ===== Страница «Эквайринг» (Первый вход) — окружение компонента ===== */
+  .page { position: absolute; inset: 0; display: flex; background: var(--background-unaccented_background-color); }
+  .acc { width: 200px; flex: none; background: #2e3c4e; /* нет токена: фон аккордеона Saby */ }
+  .acc img { display: block; width: 200px; height: 768px; } /* аккордеон — картинкой из макета */
+  .pg { flex: 1 1 0; position: relative; }
+  /* Вкладки (tabs/gorizontal, Figma): 15px, активная Semi Bold primary + маркер 3px r4 под текстом; ширина под жирный текст */
+  .pg__tabs { position: absolute; right: 64px; top: 46px; display: flex; gap: 25px; font-size: var(--font-font-size-font-size_l); letter-spacing: -0.2115px; color: var(--text-secondary_text-color); }
+  .pg__tabs span { display: inline-grid; padding-top: 7px; height: 32px; box-sizing: border-box; cursor: pointer; }
+  .pg__tabs span::before { content: attr(data-t); font-weight: 600; visibility: hidden; height: 0; overflow: hidden; }
+  .pg__tabs span::after { content: ""; height: 3px; margin-top: 4px; border-radius: 4px; background: var(--extra-marker_color); opacity: 0; }
+  .pg__tabs span.is-active { font-weight: 600; color: var(--text-primary_text-color); }
+  .pg__tabs span.is-active::after { opacity: 1; }
+  /* Тулбар справа (Figma «тулбар» 52×768): «КВ» с точкой-уведомлением, информеры внизу */
+  .pg__user { position: absolute; right: 16px; top: 13px; font-size: 14px; font-weight: 600; color: var(--text-label_text-color); }
+  .pg__user::after { content: ""; position: absolute; left: -1px; top: 12px; width: 6px; height: 6px; border-radius: 50%;
+    background: #f47843; /* нет токена: точка уведомления из макета */ box-shadow: 0 0 0 1px var(--background-unaccented_background-color); }
+  .pg__tb { position: absolute; right: 10px; bottom: 6px; }
+  .pg__body { position: absolute; left: 64px; top: 178px; width: 644px; }
+  .pg__title { margin: 0 0 20px; line-height: 31px; font-size: 24px; font-weight: 400; color: var(--text-label_text-color); letter-spacing: -0.34px; }
+  .chips { display: flex; gap: 8px; margin-bottom: 24px; }
+  .chip { all: unset; cursor: pointer; height: 32px; padding: 0 16px; display: inline-flex; align-items: center; gap: 8px;
+    background: var(--background-background-color); border-radius: 16px; font-size: 15px; box-shadow: 0 0 0 1px var(--border-pale_border-color); }
+  .chip img { width: 24px; height: 24px; }
+  .chip--more { width: 32px; padding: 0; justify-content: center; font-family: var(--icon-font-family-m_icon_font-family); font-size: 24px; color: #333; /* макет */ }
+  .chip:hover { background: var(--background-hover_background-color); }
+  .chip--static { cursor: default; } .chip--static:hover { background: var(--background-background-color); }
+  .pg__cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pg__cols .caption { padding: 0 0 12px; font-size: 18px; line-height: 22px; letter-spacing: -0.25px; color: var(--components-list-placeholder_text-color_list); }
+  .pg__cols .menu-card { height: 290px; box-sizing: border-box; border-radius: 20px; padding-top: 11px; gap: 7px; }
+  .pg__cols .menu-item__desc { white-space: normal; }
+
+  /* ===== Представления страницы (Figma: разделы «Пустое», «Типовое», «Максимальное»), 1024×768 ===== */
+  .vw { flex: 1 1 0; display: flex; min-width: 0; background: var(--background-unaccented_background-color); }
+  .vw__main { width: 772px; flex: none; display: flex; flex-direction: column; }
+  .vw__head { height: 46px; display: flex; align-items: center; gap: 12px; padding-left: var(--offset-offset_m); }
+  .vw__head > :first-child { flex: 1 1 0; }
+  .add-btn { all: unset; cursor: pointer; width: 40px; height: 26px; border-radius: 100px; background: var(--extra-brand_color);
+    color: #fff; display: inline-flex; align-items: center; justify-content: center; font-family: "cbuc-icons"; font-size: 16px; }
+  .vw-search { margin-right: -8px; /* Figma: поиск вплотную к фильтру (4px) */  width: 300px; height: 26px; box-sizing: border-box; border: 1px solid var(--border-border-color); border-radius: 14px;
+    background: var(--background-background-color); display: flex; align-items: center; padding-left: var(--offset-offset_m); font-size: 14px; }
+  .vw-search span { flex: 1 1 0; color: var(--components-input-placeholder-color_inputtext); }
+  .vw-search b { height: 26px; margin: -1px -1px -1px 0; padding: 0 8px; border-radius: 100px; display: inline-flex; align-items: center; gap: 4px;
+    background: var(--background-same-secondary_same_background-color); font-weight: 400; color: var(--text-text-color); }
+  .vw-search b i { font-style: normal; font-family: "cbuc-icons"; font-size: 12px; color: var(--icon-label_icon-color); }
+  .vw-filter { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-family: "cbuc-icons24"; font-size: 24px; color: var(--icon-secondary_icon-color); }
+  .vw__tabs { height: 32px; display: flex; justify-content: flex-end; }
+  .vw__tab { padding: 0 12px; height: 32px; box-sizing: border-box; padding-top: 3px; display: flex; flex-direction: column; justify-content: center;
+    font-size: var(--font-font-size-font-size_l); color: var(--text-secondary_text-color); cursor: pointer; }
+  .vw__tab.is-active { font-weight: 600; color: var(--text-primary_text-color); }
+  .vw__tab.is-active span { box-shadow: 0 9px 0 -6px var(--extra-marker_color); }
+  .vw__body { flex: 1 1 0; min-height: 0; display: flex; }
+  .vw__master { width: 350px; flex: none; box-sizing: border-box; padding: 0 4px 24px; display: flex; flex-direction: column; gap: 8px; overflow: hidden; }
+  .vw__reg { flex: 1 1 0; min-width: 0; padding-left: 4px; display: flex; flex-direction: column; gap: 8px; }
+  .vw-tb { width: 52px; flex: none; display: flex; flex-direction: column; align-items: center; padding: 12px 0 6px; box-sizing: border-box; }
+  .vw-tb__user { font-size: 14px; font-weight: 600; color: var(--text-label_contrast_text-color); height: 20px; }
+  .vw-tb__ic { width: 32px; height: 32px; margin-top: 6px; display: flex; align-items: center; justify-content: center;
+    font-family: "cbuc-icons24"; font-size: 24px; color: var(--icon-secondary_icon-color); }
+  .vw-tb__ic:first-of-type { margin-top: 14px; }
+  .vw-tb .side-toolbar__bottom { margin-top: auto; }
+  /* Карточка договора в мастере */
+  .dcard { background: var(--background-background-color); border-radius: var(--border-radius-border-radius_m, 12px); box-sizing: border-box; }
+  .dcard--head { height: 88px; padding: 11px 12px 18px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; }
+  .dcard__row { display: flex; align-items: center; gap: 12px; height: 24px; }
+  .dcard__name { flex: 1 1 0; display: flex; align-items: center; gap: 6px; font-size: 18px; font-weight: 600; letter-spacing: -0.25px; }
+  .dcard__name img { width: 24px; height: 24px; }
+  .dcard__ok { font-style: normal; font-family: "cbuc-icons"; font-size: 12px; color: var(--icon-success_icon-color, #298e3c); padding-top: 4px; }
+  .dcard__lbl { font-size: 14px; color: var(--text-label_text-color); padding-top: 2px; }
+  .dcard__cnt { display: flex; justify-content: space-between; align-items: center; height: 29px; }
+  .dcard__fee { display: flex; align-items: center; gap: 4px; padding-top: 7px; font-size: 13px; color: var(--text-unaccented_text-color); }
+  .dcard__fee i { font-style: normal; font-family: "cbuc-icons"; font-size: 14px; color: var(--icon-unaccented_icon-color, #ccc); }
+  .dcard__sum { display: flex; align-items: baseline; gap: 10px; font-size: 28px; font-weight: 600; letter-spacing: -0.39px; }
+  .dcard__sum small { font-size: 14px; font-weight: 400; color: var(--text-label_text-color); letter-spacing: 0; }
+  .dcard--list { padding: 12px 12px 16px; display: flex; flex-direction: column; gap: 8px; }
+  .dcard--pts { padding-left: 16px; } .dcard--pts .dcard__title { margin-bottom: 4px; } /* Figma «1 договор»: список точек */
+  .dcard__title { display: flex; align-items: center; gap: 12px; font-size: 16px; }
+  .dcard__plus { all: unset; cursor: pointer; height: 24px; padding: 0 10px; border-radius: 100px; background: var(--background-contrast-pale_color);
+    font-family: "cbuc-icons"; font-size: 16px; display: inline-flex; align-items: center; }
+  .dcard__hint { font-size: 14px; color: var(--components-list-placeholder_text-color_list); }
+  .dcard__item { font-size: 14px; line-height: 30px; }
+  .dcard__item small { font-size: 14px; color: var(--text-label_text-color); margin-left: 6px; }
+  /* Виджет «Динамика оплат» */
+  .dyn { position: relative; background: #fff; border-radius: 8px; box-shadow: 0 0 4px rgba(0,0,0,.06); /* тень shadow_c из макета */
+    height: 252px; flex: none; padding: 13px 12px 12px; display: flex; flex-direction: column; gap: 16px; box-sizing: border-box; }
+  .dyn::before { content: ""; position: absolute; left: 0; top: 12px; width: 4px; height: 22px; border-radius: 0 2px 2px 0; background: var(--extra-brand_color); }
+  .dyn__title { margin: 0; height: 22px; font-size: 18px; font-weight: 600; letter-spacing: -0.25px; }
+  .dyn__in { flex: 1 1 0; display: flex; flex-direction: column; gap: 12px; min-height: 0; }
+  .dyn__empty { font-size: 14px; color: var(--components-list-placeholder_text-color_list); }
+  .chart { flex: 1 1 0; display: flex; gap: 12px; min-height: 0; }
+  .chart__y { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; }
+  .chart__unit { font-size: 10px; font-weight: 600; color: var(--text-secondary_text-color); text-transform: uppercase; }
+  .chart__ticks { flex: 1 1 0; display: flex; flex-direction: column; justify-content: space-between; align-items: flex-end; padding-bottom: 15px;
+    font-size: 12px; color: var(--text-label_text-color); }
+  .chart__plot { flex: 1 1 0; position: relative; min-width: 0; }
+  .chart__grid { position: absolute; inset: 0; padding-top: 20px; padding-bottom: 0; display: flex; flex-direction: column; justify-content: space-between; }
+  .chart__grid > i { display: flex; align-items: center; height: 15px; } .chart__grid > i::before { content: ""; flex: 1; height: 1px; background: var(--border-border-color); }
+  .chart__x { border-top: 1px solid var(--border-unaccented_border-color, #d2d6da); display: flex; }
+  .chart__x span { position: relative; flex: 1 1 0; padding-top: 7px; text-align: center; font-size: 12px; color: var(--text-label_text-color); }
+  .chart__x span::before { content: ""; position: absolute; left: 0; top: 0; width: 1px; height: 4px; background: var(--border-unaccented_border-color, #d2d6da); }
+  .chart__x span:last-child::after { content: ""; position: absolute; right: 0; top: 0; width: 1px; height: 4px; background: var(--border-unaccented_border-color, #d2d6da); }
+  .chart__x span.is-off { color: var(--text-danger_text-color); }
+  .chart__graph { position: absolute; left: 0; right: 0; top: 28px; bottom: 23px; }
+  .chart__graph img { display: block; width: 100%; height: 100%; }
+  /* Реестр */
+  .reg { flex: 1 1 0; min-height: 0; background: #fff; border-radius: 8px 8px 0 0; box-shadow: 0 0 8px rgba(0,0,0,.06); overflow: hidden; }
+  .reg--empty { padding: 32px 12px 20px 32px; }
+  .stub { padding: 16px 20px; border-radius: 16px; display: flex; flex-direction: column; gap: 8px;
+    background: radial-gradient(ellipse 110% 100% at 0 20%, rgba(0,133,242,.07), rgba(0,133,242,0) 100%), #fff; /* градиент заглушки из макета */ }
+  .stub__title { font-size: 16px; line-height: 19px; color: var(--text-label_text-color); padding-top: 2px; }
+  .stub__text { font-size: 14px; line-height: 18px; color: var(--text-label_text-color); padding-top: 8px; }
+
+  /* Типовое: счетчики, сравнение периодов, мастер «По компании», реестр оплат */
+  .cnt { flex: none; height: 88px; box-sizing: border-box; background: #fff; border-radius: 8px; box-shadow: 0 0 4px rgba(0,0,0,.06);
+    position: relative; overflow: hidden; display: flex; gap: 24px; padding: 0 12px; }
+  .cnt--fit .cnt__item { min-width: 124px; } /* Figma «1 договор»: шаг счетчиков 148 */
+  .cnt__item { flex: none; padding-top: 16px; white-space: nowrap; }
+  .cnt__lbl { font-size: 14px; color: var(--text-label_text-color); height: 17px; }
+  .cnt__val { margin-top: 8px; display: flex; align-items: center; gap: 4px; font-size: 24px; letter-spacing: -0.34px; }
+  .cnt__val i { font-style: normal; font-family: "cbuc-icons24"; font-size: 24px; color: var(--icon-unaccented_icon-color, #ccc); }
+  .cnt__val i.up { color: var(--icon-success_icon-color, #298e3c); } .cnt__val i.down { color: var(--icon-danger_icon-color, #c2140a); }
+  .cnt__val small { font-size: 18px; color: var(--text-unaccented_text-color); letter-spacing: 0; }
+  .cnt__more { position: absolute; right: 4px; top: 26px; width: 20px; height: 36px; border-radius: 10px; background: var(--background-contrast-pale_color);
+    display: flex; align-items: center; justify-content: center; }
+  .cnt__more::before { content: ""; width: 6px; height: 6px; border: solid var(--icon-secondary_icon-color); border-width: 1.5px 1.5px 0 0; transform: rotate(45deg); margin-left: -3px; }
+  .cnt::after { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 40px; background: linear-gradient(90deg, rgba(255,255,255,0), #fff 60%); pointer-events: none; }
+  .cnt--fit::after { display: none; }
+  .dyn--data { height: 250px; padding: 12px; gap: 12px; }
+  .dyn--data::before { top: 12px; }
+  .cmp { height: 78px; margin-bottom: -28px; display: flex; justify-content: center; gap: 24px; flex: none; }
+  .cmp__nav { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+  .cmp__arrows { display: flex; gap: 6px; }
+  .cmp__arrows span { width: 24px; height: 24px; border-radius: 100px; display: flex; align-items: center; justify-content: center; }
+  .cmp__arrows span:first-child { background: var(--background-contrast-pale_color); }
+  .cmp__arrows span::before { content: ""; width: 6px; height: 6px; border: solid var(--icon-label_icon-color); border-width: 0 0 1.5px 1.5px; transform: rotate(45deg); margin-left: 3px; }
+  .cmp__arrows span + span::before { transform: rotate(-135deg); margin: 0 3px 0 0; }
+  .cmp__per { height: 24px; display: flex; align-items: flex-end; font-size: 10px; text-transform: uppercase; color: var(--text-label_text-color); }
+  .cmp__vals { display: flex; align-items: flex-start; padding-top: 1px; }
+  .cmp__col { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .cmp__seg { height: 24px; display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 600; color: var(--text-label_text-color); }
+  .cmp__seg::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: #dfe6eb; /* graphs__baseColors_color-0 */ }
+  .cmp__seg--cur { color: var(--text-link_text-color); } .cmp__seg--cur::before { background: #5c94fb; /* graphs__baseColors_color-1 */ }
+  .cmp__num { height: 24px; display: flex; align-items: flex-end; font-size: 20px; letter-spacing: -0.28px; color: var(--text-label_text-color); }
+  .cmp__num--cur { font-weight: 600; color: var(--text-text-color); }
+  .cmp__swap { height: 24px; padding: 0 12px; display: flex; align-items: center; font-family: "cbuc-icons"; font-size: 16px; color: var(--icon-secondary_icon-color); }
+  .cmp__cur { display: flex; gap: 4px; align-items: flex-start; }
+  .cmp__delta { padding-top: 37px; font-size: 12px; color: var(--text-success_text-color, #298e3c); }
+  .chart--data { flex: none; height: 129px; }
+  .chart--data .chart__ticks span:first-child { font-size: 14px; font-weight: 600; color: var(--text-secondary_text-color); }
+  .chart--data .chart__grid > i:first-child { height: 17px; }
+  .chart--data .chart__graph { top: 20px; }
+  .rg { flex: 1 1 0; min-height: 0; background: #fff; border-radius: 8px 8px 0 0; box-shadow: 0 0 8px rgba(0,0,0,.06); overflow: hidden; padding: 5px 0 0; }
+  .rg__day { height: 32px; display: flex; align-items: flex-end; padding: 0 20px 6px; box-sizing: border-box; font-size: 15px; }
+  .rg__row { height: 31px; display: flex; align-items: center; padding: 0 12px 0 0; font-size: 14px; white-space: nowrap; cursor: pointer; }
+  .rg__row:hover { background: var(--background-hover_background-color); }
+  .rg__t { width: 56px; flex: none; text-align: right; font-size: 12px; color: var(--text-label_text-color); }
+  .rg__ic { width: 16px; flex: none; margin: 0 16px 0 12px; font-family: "cbuc-icons"; font-size: 16px; color: var(--icon-unaccented_icon-color, #ccc); }
+  .rg__t + .rg__name { margin-left: 16px; font-size: 14px; max-width: none; }
+  .rg__name { flex: none; max-width: 120px; overflow: hidden; text-overflow: ellipsis; font-size: 15px; font-weight: 600; color: var(--text-secondary_text-color); margin-right: 6px; }
+  .rg__name.is-none { color: var(--text-unaccented_text-color); }
+  .rg__name--s { font-size: 14px; }
+  .rg__cm { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; color: var(--text-unaccented_text-color); }
+  .rg__cm b { font-weight: 400; color: var(--text-label_text-color); }
+  .rg__bank { flex: none; margin: 0 10px 0 8px; font-size: 12px; color: var(--text-label_text-color); }
+  .rg__sum { flex: none; width: 70px; text-align: right; font-size: 15px; font-weight: 600; color: var(--text-secondary_text-color); }
+  .rg__sum.is-neg { color: var(--text-danger_text-color); }
+  .rg__sum small { font-size: 12px; font-weight: 400; color: #ccc; /* unaccented, копейки */ margin-left: 0; }
+  .mst { padding: 0 0 0 0; }
+  .mst__head { height: 36px; box-sizing: border-box; display: flex; align-items: flex-start; justify-content: space-between; padding: 16px 12px 0 16px; font-size: 14px; color: var(--text-label_text-color); }
+  .mst__head span { display: flex; align-items: center; gap: 4px; line-height: 16px; }
+  .mst__head em { font-style: normal; }
+  .mst__head i { font-style: normal; font-family: "cbuc-icons"; font-size: 14px; }
+  .mst__row { display: flex; align-items: center; gap: 4px; height: 37px; padding: 0 12px 0 16px; font-size: 15px; cursor: pointer; }
+  .mst__row:hover { background: var(--background-hover_background-color); }
+  .mst__row img { width: 16px; height: 16px; }
+  .mst__row--all { height: 41px; box-sizing: border-box; padding-bottom: 5px; background: var(--background-same-secondary_same_background-color); box-shadow: inset 3px 0 0 var(--extra-marker_color);
+    font-size: 16px; font-weight: 600; text-transform: uppercase; }
+  .mst__row--all .mst__sum { font-size: 28px; letter-spacing: -0.39px; }
+  .mst__row--all .mst__name { position: relative; top: 5px; } /* по базовой линии суммы */
+  .mst__row--l2 .mst__sum { font-size: 15px; }
+  .mst__row--l2 { font-size: 14px; }
+  .mst__name { flex: 0 1 auto; }
+  .mst__chev { font-style: normal; font-family: "cbuc-icons"; font-size: 16px; color: var(--icon-label_icon-color); }
+  .mst__type { margin-left: auto; width: 82px; display: flex; align-items: center; gap: 5px; font-size: 13px; color: var(--text-unaccented_text-color); }
+  .mst__type i { font-style: normal; font-family: "cbuc-icons"; font-size: 14px; color: var(--icon-unaccented_icon-color, #ccc); }
+  .mst__sum { margin-left: auto; text-align: right; }
+  .mst__type + .mst__sum { margin-left: 0; min-width: 62px; }
+  .dcard--link .dcard__lbl { text-decoration: underline; text-decoration-color: rgba(137,145,169,.5); text-underline-offset: 3px; }
+
+  /* Максимальное: мастер компаний, варианты шапки мастера и виджета */
+  .mst__row--co .mst__name { font-size: 16px; }
+  .mst__row--co .mst__sum { font-weight: 600; font-size: 16px; }
+  .mst--blue .mst__head { color: var(--text-secondary_text-color); }
+  .mst--uline .mst__head span { border-bottom: 1px solid rgba(137,145,169,.5); }
+  .cnt--dark .cnt__val i { color: var(--text-unaccented_text-color); }
+  .cmp__x { font-style: normal; font-family: "cbuc-icons"; font-size: 12px; color: var(--icon-label_icon-color); margin-left: 2px; }
+
+  /* Всплывающие меню и панели в представлениях */
+  .pop { position: absolute; z-index: 6; background: #fff; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,.16); /* нет токена: тень попапа */
+    padding: 8px 0; box-sizing: border-box; font-size: 16px; }
+  .pop__cap { height: 32px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 14px; color: var(--text-label_text-color); }
+  .pop__cap i { font-style: normal; font-family: "cbuc-icons"; font-size: 16px; color: var(--icon-secondary_icon-color); margin-left: 20px; }
+  .pop__cap--f { color: var(--text-primary_text-color); font-size: 16px; text-transform: uppercase; }
+  .pop__cap--f small { text-transform: none; font-size: 13px; color: var(--text-label_text-color); }
+  .pop__it { min-height: 38px; white-space: nowrap; display: flex; align-items: center; gap: 8px; padding: 0 20px 0 30px; cursor: pointer; }
+  .pop__it:hover { background: var(--components-dropdownpopup-item_hover_background-color_menu); }
+  .pop__it small { font-size: 12px; color: var(--text-label_text-color); }
+  .pop__it.is-sel { font-weight: 600; }
+  .pop__it--ic { padding-left: 20px; gap: 8px; }
+  .pop__it--ic > i { font-style: normal; font-family: "cbuc-icons24"; font-size: 24px; color: var(--icon-secondary_icon-color); width: 24px; }
+  .pop__it--ic span small { display: block; font-size: 12px; color: var(--text-unaccented_text-color); margin-top: 2px; }
+  .pop__sep { height: 1px; margin: 8px 0; background: var(--border-border-color); }
+  .pop--menu .pop__it { padding-left: 20px; }
+  .pop--filter { width: 450px; padding: 12px 0 16px; font-size: 14px; }
+  .pop--filter .pop__cap { padding-left: 28px; }
+  .flt__row { padding: 6px 28px; } .flt__row b { font-weight: 400; border-bottom: 1px dashed var(--border-unaccented_border-color, #d2d6da); }
+  .flt__cap { padding: 14px 28px 4px; font-size: 12px; text-transform: uppercase; color: var(--icon-secondary_icon-color); }
+  .flt__cols { display: grid; grid-template-columns: 242px 1fr; padding: 0 28px; row-gap: 9px; color: var(--icon-secondary_icon-color); }
+  .cnt__track { display: flex; gap: 24px; transition: transform .25s; }
+  .cnt.is-end .cnt__track { transform: translateX(var(--shift, 0px)); }
+  .cnt.is-end .cnt__more { right: auto; left: 4px; } .cnt.is-end .cnt__more::before { transform: rotate(-135deg); margin: 0 0 0 3px; }
+  .cnt.is-end::after { left: 0; right: auto; background: linear-gradient(270deg, rgba(255,255,255,0), #fff 60%); }
+  .cnt__more { cursor: pointer; z-index: 1; }
+  .mst__sub { font-size: 15px; } .mst__sub .mst__name { margin-left: 16px; }
+  .mst__sub--l2 { font-size: 14px; } .mst__sub--l2 .mst__name { margin-left: 32px; }
+  .mst__row--co .mst__chev { cursor: pointer; }
+  .mst__row--co.is-open .mst__chev { color: var(--icon-label_icon-color); }
+  .mst__head span, .vw__tab, .vw-search b, .vw-filter, .vw-tb__ic { cursor: pointer; }
+
+
+
+  /* Подсказка демо о переходе в состояние следующего пакета */
+  .toast {
+    position: absolute; left: 50%; bottom: 24px; transform: translateX(-50%); padding: 10px 16px; border-radius: 12px;
+    background: #333; color: #fff; font-size: 14px; opacity: 0; transition: opacity .2s; pointer-events: none; /* нет токена: служебное */
+  }
+  .toast.is-shown { opacity: 1; }
+  /* ===== Отчеты: служебное ===== */
+  .vw-search b i { display: none; }
+  /* Реестр с прода: суммы с копейками шире, компания сжимается с многоточием */
+  .rg__bank { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .rg__sum { width: auto; min-width: 70px; }
+  .rg__sum small { color: var(--text-label_text-color); }
+  .rg__sum small.is-zero { color: #ccc; /* как на проде: «.00» светло-серым */ }
+
+  /* ===== Панель отчета «Обороты и сальдо по счету» (прод: стековая панель 900px от x=70, тулбар 54px справа) ===== */
+  .rep { position: absolute; left: 70px; top: 0; width: 954px; height: 768px; display: flex;
+    background: #f8f8f8; /* нет токена: фон стековой панели на проде */
+    box-shadow: -6px 0 11px rgba(0,0,0,.11); /* нет токена: тень панели, как в acquiring */ }
+  .rep[hidden] { display: none; }
+  .rep__main { width: 900px; flex: none; display: flex; flex-direction: column; min-width: 0; }
+  .rep__top { height: 46px; flex: none; display: flex; align-items: center; padding: 0 0 0 16px; }
+  .rep__title { margin: 0; flex: 1 1 0; font-size: 20px; font-weight: 600; color: #000; white-space: nowrap; }
+  .rep__built { font-size: 12px; color: var(--text-label_text-color, #8991a9); display: inline-flex; align-items: center; gap: 6px; margin-right: 12px; }
+  .rep__built i { font-style: normal; font-family: "cbuc-icons"; font-size: 16px; color: #f47843; /* нет токена: оранжевая иконка обновления */ cursor: pointer; }
+  .rep__search { width: 184px; height: 24px; box-sizing: border-box; border: 1px solid #e5e7eb; border-radius: 100px; background: #fff;
+    display: flex; align-items: center; padding-left: 11px; font-size: 14px; color: rgba(137,145,169,.6); }
+  .rep__filters { height: 32px; flex: none; display: flex; align-items: center; padding-left: 12px; gap: 2px; }
+  .rep__funnel { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-family: "cbuc-icons24"; font-size: 24px; color: #656c87; cursor: pointer; }
+  .rep__chip { height: 26px; box-sizing: border-box; padding: 0 8px; border-radius: 100px; background: #ebf4ff; /* нет токена: фон отбора */
+    display: inline-flex; align-items: center; font-size: 14px; color: #000; cursor: pointer; }
+  .rep__chip--period { font-size: 15px; font-weight: 600; }
+  .rep__body { flex: 1 1 0; min-height: 0; margin-top: 0; background: #fff; overflow: auto; }
+
+  /* Таблица: колонки как в макете «Расчеты по эквайрингу» (Figma 33184:306168): На начало (1) · Обороты (2) · На конец (1) */
+  .rt { padding-top: 9px; display: grid; grid-template-columns: 20px 461px 100px 109px 109px 101px; }
+  .rt > div { box-sizing: border-box; white-space: nowrap; }
+  .rt__h { font-size: 12px; color: var(--text-label_text-color, #8991a9); }
+  .rt__grp { grid-row: 1; text-align: center; height: 24px; line-height: 15px; padding-top: 6px !important; }
+  .rt__sub { grid-row: 2; text-align: right; padding: 4px 6px 0 0 !important; height: 38px; line-height: 15px; } /* все подзаголовки в две строки; край — как у сумм: 6px от линии */
+  .rt__sub--last { padding-right: 12px !important; }
+  .rt__grp--r { text-align: right; padding-right: 6px !important; } .rt__grp--r.rt__grp--last { padding-right: 12px !important; } /* одноколоночные группы — по краю сумм */ .rt__tot--last { padding-right: 12px !important; }
+  .rt__tot { grid-row: 3; height: 28px; padding: 3px 6px 0 0; text-align: right; font-size: 15px; font-weight: 600; color: #313e78; }
+  .rt__tot small { font-size: 12px; font-weight: 400; }
+  .rt__sep { border-right: 1px solid #eaeaea; }
+  .rt__row { display: contents; }
+  .rt__row > div { height: 33px; display: flex; align-items: center; border-bottom: 1px solid #eaeaea; /* нет токена: разделитель строк */ }
+  .rt__row > .rt__num { justify-content: flex-end; padding-right: 6px; font-size: 14px; color: #000; }
+  .rt__row > .rt__num:last-child { padding-right: 12px; }
+  .rt__num small { font-size: 12px; color: #656c87; }
+  .rt__num small.is-zero { color: #ccc; }
+  .rt__mark { position: relative; }
+  .rt__row.is-active .rt__mark::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; border-radius: 0 2px 2px 0;
+    background: #f47843; /* нет токена: маркер активной строки */ }
+  .rt__name { font-size: 15px; color: #000; overflow: hidden; padding-right: 6px; cursor: pointer; }
+  .rt__name span { overflow: hidden; text-overflow: ellipsis; }
+  .rt__inn { margin-left: 8px; font-size: 12px; color: #999; flex: none; }
+  .rt__exp { width: 20px; height: 16px; flex: none; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  .rt__exp::before { content: ""; border-style: solid; border-width: 5px 0 5px 7px; border-color: transparent transparent transparent #313e78; /* нет токена: как треугольник на проде */ }
+  .rt__row:hover > div { background: var(--background-hover_background-color, #f5f7fa); }
+  .rt__head-line { grid-column: 1 / -1; margin-top: -1px; border-bottom: 1px solid #eaeaea; }
+
+  /* Тулбар панели: закрыть, развернуть, итоги, печать, выгрузка, ссылка, развернуть дерево, отметки; информеры внизу */
+  .rep__tb { width: 54px; flex: none; display: flex; flex-direction: column; align-items: center; padding: 6px 0; box-sizing: border-box; }
+  .rep__close { width: 32px; height: 32px; border-radius: 16px; background: #f0f1f4; /* нет токена */ display: flex; align-items: center; justify-content: center;
+    font-family: "cbuc-icons"; font-size: 16px; color: #8991a9; cursor: pointer; margin-bottom: 8px; }
+  .rep__btn { width: 32px; height: 32px; margin-top: 6px; display: flex; align-items: center; justify-content: center; font-family: "cbuc-icons24"; font-size: 24px; color: #656c87; cursor: pointer; }
+  .rep__btn--sum { font-family: var(--font-font-family-default), sans-serif; font-size: 20px; color: #2562aa; /* нет токена: включенная кнопка итогов */ }
+  .rep__btn--sum sub { font-size: 10px; margin-left: 1px; }
+  .rep__tb .side-toolbar__bottom { margin-top: auto; }
+
+  /* ===== План Б: «Журнал проверки» (стандарт «Проверка отчета») поверх отчета ===== */
+  .rep__main { position: relative; }
+  .rep__check { height: 26px; box-sizing: border-box; padding: 0 12px 0 8px; margin-right: 12px; border-radius: 100px; border: 1px solid #f6733c; /* нет токена: акцентная кнопка */
+    background: #fff; color: #e05d25; font-size: 14px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; font-family: inherit; }
+  .rep__check-ic { font-style: normal; font-family: "cbuc-icons"; font-size: 16px; line-height: 16px; } /* иконка Discrepancies (eb21) из cbuc-icons */
+  .rep__check:hover { background: #fff4ef; }
+  /* Варианты кнопки «Найти расхождения» у заголовка (Figma «Кнопки» 126038:231392: button_default/filled, высота 24, r100, отступы 12, текст 14) */
+  .rep__top--near .rep__title { flex: none; }
+  /* кнопка у заголовка: по центру строки шапки, как заголовок, «построен» и поиск */
+  .rep__top--near .rep__check { margin: 0 auto 0 12px; height: 24px; padding: 0 12px 0 10px; gap: 4px; border: 0; color: #000; }
+  .rep__top--near .rep__check:hover { background: #ccc; }
+  .rep__check--grey { background: #dbdbdb; /* unaccented filled */ }
+  .rep__check--pale { background: rgba(51,51,51,.05); /* pale filled */ }
+  .rep__check--pale:hover { background: rgba(51,51,51,.1) !important; }
+  .rep__top--near .rep__check--blue { border: 1px solid #5292dc; /* secondary outlined */ background: #fff; }
+  .rep__top--near .rep__check--brand { border: 1px solid #0085f2; /* brand same_outlined */ background: #fff; }
+  .rep__top--near .rep__check--blue:hover, .rep__top--near .rep__check--brand:hover { background: #f0f7ff; }
+  .rep__check--blue .rep__check-ic { color: #5292dc; } .rep__check--brand .rep__check-ic { color: #0085f2; }
+  .rep__check--noicon .rep__check-ic { display: none; } .rep__check--noicon { padding-left: 12px !important; }
+  .rep__check--icon { width: 24px; padding: 0 !important; justify-content: center; font-size: 0 !important; }
+  .rep__check--icon .rep__check-ic { font-size: 14px; }
+  .rep__check-ic svg { width: 16px; height: 16px; display: block; color: #656c87; /* лупа вместо Discrepancies */ }
+  .rep__top--near .rep__check--pale-outline { border: 1px solid rgba(51,51,51,.15); /* pale outlined: контур в тон бледной заливки */ background: #fff; }
+  .rep__top--near .rep__check--pale-outline:hover { background: rgba(51,51,51,.05); }
+  /* «С бледной обводкой» (стандарт кнопок): белый фон, светлый контур в цвет стиля, черный текст, цветная иконка */
+  .rep__top--near .rep__check--po-primary { border: 1px solid #fbd0bb; /* primary pale outline */ background: #fff; }
+  .rep__top--near .rep__check--po-primary:hover { background: #fff4ef; }
+  .rep__check--po-primary .rep__check-ic svg { color: #f6733c; }
+  .rep__top--near .rep__check--po-secondary { border: 1px solid #b7cdea; /* secondary pale outline */ background: #fff; }
+  .rep__top--near .rep__check--po-secondary:hover { background: #f0f5fc; }
+  .rep__check--po-secondary .rep__check-ic svg { color: #313e78; }
+    box-shadow: 0 4px 24px rgba(0,0,0,.16); /* нет токена */ font-size: 14px; line-height: 19px; color: #000; }
+
+  /* журнал: высота по умолчанию 400 по стандарту, на экране 768 берем 330; «уменьшить высоту» — 200 */
+  .cj { position: absolute; left: 0; right: 0; bottom: 0; height: 330px; z-index: 5; display: flex; flex-direction: column;
+    border-radius: 20px 20px 0 0; background: #ffdddb; /* @danger_hover_same_background-color */ box-shadow: 0 -4px 16px rgba(0,0,0,.10); transition: height .5s; }
+  .cj.is-low { height: 200px; }
+  .cj--warn { background: #fff3db; /* @warning_hover_same_background-color */ }
+  .cj--ok { background: #e0f5e0; /* @success_hover_same_background-color */ }
+  .cj__head { height: 44px; flex: none; display: flex; align-items: center; padding: 0 8px 0 12px; gap: 8px; }
+  .cj__ic24 { width: 24px; height: 24px; flex: none; display: flex; align-items: center; justify-content: center; }
+  .cj__ic24 svg { width: 22px; height: 22px; }
+  .cj__ic24--spin { font-family: "cbuc-icons"; font-size: 20px; color: #c2140a; animation: cjspin 1.2s linear infinite; }
+  @keyframes cjspin { to { transform: rotate(360deg); } }
+  .cj__title { font-size: 16px; font-weight: 600; color: #c2140a; /* @danger_text-color */ white-space: nowrap; }
+  .cj__cnt { font-size: 16px; color: #c2140a; }
+  .cj--warn .cj__title, .cj--warn .cj__cnt { color: #b2820e; /* @warning_text-color */ }
+  .cj--ok .cj__title { color: #298e3c; /* @success_text-color */ }
+  .cj__date { font-size: 14px; color: #8991a9; margin-left: 4px; white-space: nowrap; }
+  .cj__re { font-family: "cbuc-icons"; font-size: 16px; color: #8991a9; cursor: pointer; }
+  .cj__sp { flex: 1 1 0; }
+  .cj__hb { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #656c87; border-radius: 16px; }
+  .cj__hb--f { font-family: "cbuc-icons24"; font-size: 24px; }
+  .cj__hb--x { font-family: "cbuc-icons"; font-size: 16px; color: #8991a9; }
+  .cj__hb--sz::before, .cj__arr::before { content: ""; width: 8px; height: 8px; border: solid currentColor; border-width: 0 2px 2px 0; transform: rotate(45deg); margin-top: -4px; }
+  .cj.is-low .cj__hb--sz::before { transform: rotate(-135deg); margin-top: 4px; }
+  .cj__arr { width: 32px; height: 32px; border-radius: 16px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #fff;
+    background: #dc2219; /* кнопка Danger */ }
+  .cj--warn .cj__arr { background: #df9f20; /* кнопка Warning */ }
+  .cj__arr--prev::before { transform: rotate(135deg); margin: 0 0 0 4px; }
+  .cj__arr--next::before { transform: rotate(-45deg); margin: 0 4px 0 0; }
+  .cj__arr.is-ro { opacity: .3; cursor: default; }
+  .cj__body { flex: 1 1 0; min-height: 0; overflow: auto; margin: 0 8px 8px; background: #fff; border-radius: 12px; padding: 5px 0 8px; font-size: 14px; line-height: 19px; }
+  .cj__node { height: 37px; display: flex; align-items: center; padding-left: 4px; cursor: pointer; }
+  .cj__node i { width: 30px; display: flex; justify-content: center; }
+  .cj__node i::before { content: ""; width: 7px; height: 7px; border: solid #8991a9; border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); }
+  .cj__node.is-open i::before { transform: rotate(45deg); margin-top: -4px; }
+  .cj__node b { font-weight: 400; } .cj__node.is-open b { font-weight: 600; }
+  .cj__node em { font-style: normal; color: #c2140a; margin-left: 8px; }
+  .cj__node.is-clean em { color: #298e3c; }
+  .cj__rec { display: flex; gap: 8px; padding: 6px 12px 6px 40px; cursor: pointer; position: relative; }
+  .cj__rec:hover { background: #f5f7fa; }
+  .cj__rec.is-sel { background: #fff4f3; }
+  .cj__rec.is-sel::before { content: ""; position: absolute; left: 0; top: 4px; bottom: 4px; width: 3px; border-radius: 0 2px 2px 0; background: #c2140a; }
+  .cj__ic { width: 16px; height: 19px; flex: none; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; color: #c2140a; /* @danger_icon-color */ }
+  .cj__ic svg { width: 16px; height: 16px; }
+  .cj__txt { flex: 1 1 0; min-width: 0; }
+  .cj__main { color: #000; }
+  .cj__main a, .cj__hint a { color: inherit; text-decoration: underline; cursor: pointer; }
+  .cj__hint { color: #8991a9; /* @label_text-color */ margin-top: 2px; }
+  .cj__hint ul { margin: 2px 0 0; padding-left: 18px; }
+  .cj__btns { display: flex; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+  .cj__btn { height: 24px; padding: 0 10px; border-radius: 100px; border: 1px solid #c3c8d6; background: #fff; font: inherit; font-size: 13px; color: #313e78; cursor: pointer; }
+  .cj__btn:hover { border-color: #8991a9; }
+  .cj__eye { width: 24px; height: 19px; flex: none; display: flex; align-items: center; justify-content: center; color: #8991a9; opacity: 0; }
+  .cj__eye svg { width: 16px; height: 16px; }
+  .cj__rec:hover .cj__eye, .cj__rec.is-ign .cj__eye { opacity: 1; }
+  .cj__rec.is-ign .cj__main, .cj__rec.is-done .cj__main { color: #8991a9; text-decoration: line-through; text-decoration-color: #000; }
+  .cj__rec.is-done .cj__btns, .cj__rec.is-ign .cj__btns { display: none; }
+  .cj__rec.is-done .cj__eye { display: none; }
+  /* выполняется проверка: шаги маршрута как этапы проверки */
+  .cj-run { padding: 10px 16px; }
+  .cj-run__now { font-size: 14px; color: #000; }
+  .cj-run__bar { width: 100%; height: 3px; border-radius: 2px; background: #e7e9e9; margin: 8px 0 6px; overflow: hidden; }
+  .cj-run__bar i { display: block; height: 100%; background: #f6733c; transition: width .4s; }
+  .cj-run__found { color: #c2140a; } .cj-run__found a { color: #2562aa; text-decoration: none; margin-left: 8px; cursor: pointer; } .cj-run__found a:hover { text-decoration: underline; }
+  .cj-run ol { list-style: none; margin: 10px 0 0; padding: 0; }
+  .cj-run li { display: flex; align-items: center; gap: 8px; height: 26px; color: #8991a9; }
+  .cj-run li::before { content: ""; width: 16px; height: 16px; flex: none; border-radius: 8px; border: 1.5px solid #c3c8d6; box-sizing: border-box; }
+  .cj-run li.is-done { color: #000; } .cj-run li.is-done::before { border-color: #298e3c; background: #298e3c url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M4 8.2l2.6 2.6L12 5.4' fill='none' stroke='%23fff' stroke-width='2'/%3E%3C/svg%3E") center/12px no-repeat; }
+  .cj-run li.is-now { color: #000; font-weight: 600; } .cj-run li.is-now::before { border-color: #f6733c; border-right-color: transparent; animation: cjspin 1s linear infinite; }
+  .cj-run li small { font-weight: 400; color: #c2140a; margin-left: 4px; }
+  /* пустое представление «Ошибок нет» */
+  .cj-empty { height: 100%; display: flex; align-items: center; justify-content: center; gap: 24px; padding: 0 24px; color: #000; }
+  .cj-empty svg { width: 96px; height: 96px; flex: none; }
+  .cj-empty h4 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+  .cj-empty p { margin: 0; color: #8991a9; max-width: 420px; }
+  /* свернутый журнал: мини-версия 44px в правом нижнем углу */
+  .cj-mini { position: absolute; right: 0; bottom: 0; height: 44px; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 0 8px 0 12px;
+    max-width: 640px; border-radius: 20px 0 0 0; background: #ffdddb; box-shadow: 0 -2px 12px rgba(0,0,0,.12); cursor: pointer; }
+  .cj-mini.cj--warn { background: #fff3db; } .cj-mini.cj--ok { background: #e0f5e0; }
+  .cj-mini__txt { font-size: 14px; color: #000; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+  .rt__row.is-err > div { background: #fff4f3 !important; /* подсветка сущности выбранной ошибки */ }
+</style>
+</head>
+<body>
+<div class="stage" id="stage">
+  <div class="page" id="page"></div>
+  <section class="rep" id="rep" aria-label="Расчеты по эквайрингу" hidden></section>
+  <div class="toast" id="toast"></div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/gh/MarieSmi/ui-kit@1.20.1/components/demo-frame/demo-frame.js"></script>
+<script>
+/* ---------- Данные (как на проде bu.sabyd.ru, 25 ноя) ---------- */
+const DAYS = [1,3,5,7,9,11,13,15,17,19,21,23,25,27,29], OFF = [];
+const COS = [   // мастер «По компании», показатель «Выручка»
+  ['ОСНОва', '52 800'], ['АУСН-Сервис', ''], ['Выгодный НДС', '59 500'],
+  ['Доходный Герман Исаакович (Компьютерный салон "Штекер")', ''], ['Патентный Павел Павлович', ''],
+  ['Торговая точка', '24 338'], ['Упрощенный Иван Иванович', '9 060'],
+];
+const RG = [   // реестр оплат: [время, документ, компания, рубли, копейки]
+  ['16 ноя, пн', [['13:39', 'Выручка розницы', 'Упрощенный Иван Иванович', '3 020', '00'], ['13:38', 'Выручка розницы', 'Торговая точка', '8 014', '30']]],
+  ['6 ноя, пт',  [['08:15', 'Выручка розницы', 'Торговая точка', '8 113', '10'], ['08:14', 'Выручка розницы', 'Упрощенный Иван Иванович', '3 020', '00']]],
+  ['2 ноя, пн',  [['08:26', 'Выручка розницы', 'Торговая точка', '8 210', '30'], ['08:25', 'Выручка розницы', 'Упрощенный Иван Иванович', '3 020', '00']]],
+  ['1 ноя, вс',  [['00:22', 'Выручка розницы', 'ОСНОва', '52 800', '00'], ['00:21', 'Выручка розницы', 'Выгодный НДС', '59 500', '00']]],
+];
+
+/* ---------- Страница «Эквайринг → Оплаты» (разметка и стили из демки acquiring) ---------- */
+const ACC = `<nav class="acc" aria-label="Разделы"><img src="img/page/accordion.png" alt="Аккордеон Saby: Деньги → Эквайринг" width="200" height="768"></nav>`;
+const DATE = `<div class="round round--date" title="Календарь"><b>25</b><small>ср</small></div>`;
+const counters = (list) => `<div class="cnt"><div class="cnt__track">${list.map(([l, v, ic, cls]) =>
+  `<div class="cnt__item"><div class="cnt__lbl">${l}</div><div class="cnt__val">${v}${ic ? `<i class="${cls || ''}">${ic}</i>` : ''}</div></div>`).join('')}</div></div>`;
+const chart = () => `<div class="chart chart--data">
+    <div class="chart__y"><span class="chart__unit">тыс</span><div class="chart__ticks"><span>125</span><span>75</span><span>25</span><span>0</span></div></div>
+    <div class="chart__plot"><div class="chart__grid"><i></i><i></i><i></i>
+      <div class="chart__x">${DAYS.map(d => `<span${OFF.includes(d) ? ' class="is-off"' : ''}>${d}</span>`).join('')}</div></div>
+      <div class="chart__graph"><img src="img/graphs/compare.svg" alt=""></div></div></div>`;
+const dyn = () => `<section class="dyn dyn--data"><h2 class="dyn__title">Динамика оплат</h2>
+    <div class="cmp"><div class="cmp__nav"><div class="cmp__arrows"><span></span><span></span></div><div class="cmp__per">за месяц</div></div>
+      <div class="cmp__vals"><div class="cmp__col"><span class="cmp__seg">Ноя'25</span><span class="cmp__num">120 531</span></div>
+        <span class="cmp__swap">&#xE9EB;</span>
+        <div class="cmp__cur"><div class="cmp__col"><span class="cmp__seg cmp__seg--cur">Ноя'26</span><span class="cmp__num cmp__num--cur">145 698</span></div><span class="cmp__delta">+21%</span></div></div></div>
+    ${chart()}</section>`;
+const rg = () => `<div class="rg">${RG.map(([d, rows]) => `<div class="rg__day">${d}</div>${rows.map(([t, name, co, rub, kop]) =>
+  `<div class="rg__row"><span class="rg__t">${t}</span><span class="rg__name">${name}</span><span class="rg__cm"></span><span class="rg__bank">${co}</span><span class="rg__sum">${rub}<small${kop === '00' ? ' class="is-zero"' : ''}>.${kop}</small></span></div>`).join('')}`).join('')}</div>`;
+const master = () => `<div class="mst"><div class="mst__head"><span><i>&#xE9E3;</i><em class="mst__cut">По компании</em></span><span><em class="mst__sumlbl">Выручка</em></span></div>
+    <div class="mst__row mst__row--all"><span class="mst__name">Все</span><span class="mst__sum">145 698</span></div>
+    ${COS.map(([c, s]) => `<div class="mst__row mst__row--co"><span class="mst__name">${c}</span><i class="mst__chev">&#xE9C2;</i><span class="mst__sum">${s}</span></div>`).join('')}</div>`;
+const paymentsPage = () => `${ACC}
+  <div class="vw"><div class="vw__main">
+    <div class="vw__head"><div><button class="add-btn" type="button" title="Создать" data-toast="Создание документа — в демо не входит">&#xEADD;</button></div>
+      <div class="vw-search"><span>Найти</span><b>Ноябрь</b></div><div class="vw-filter" title="Фильтр" data-toast="Фильтр страницы — в демо не входит">&#xE94C;</div></div>
+    <div class="vw__tabs"><div class="vw__tab is-active"><span>Оплаты</span></div><div class="vw__tab" data-toast="Вкладка «Поступления» — в демо не входит"><span>Поступления</span></div><div class="vw__tab" data-toast="Вкладка «Отчеты» — следующий пункт"><span>Отчеты</span></div></div>
+    <div class="vw__body"><div class="vw__master">${master()}</div>
+      <div class="vw__reg">${counters([['Комиссия', '4 971'], ['Ждем от банка', '41 539', '&#xEB5B;'], ['Приход', '145 698', '&#xE696;'], ['Возврат', '0', '&#xEA2E;']])}${dyn()}${rg()}</div></div></div>
+    <aside class="vw-tb"><div class="vw-tb__user">ГС</div><div class="vw-tb__ic" data-toast="Настройка виджетов — в демо не входит">&#xE75D;</div><div class="vw-tb__ic" data-toast="Редактирование — в демо не входит">&#xE644;</div><div class="vw-tb__ic" data-toast="Ссылки — в демо не входит">&#xE6A7;</div>
+      <div class="side-toolbar__bottom">${DATE}
+        <div class="round" title="Звонки">&#xEA8E;</div><div class="round" title="Сообщения">&#xE65D;</div><div class="round round--help" title="Помощь">&#xE9C9;</div></div></aside></div>`;
+
+/* ---------- Отчет «Обороты и сальдо по счету» (данные с прода, 25 ноя) ---------- */
+// строка: [наименование, ИНН | '', дебет оборотов, кредит оборотов, дебет сальдо конечного]; суммы — 'рубли.копейки'
+const REP_TOTAL = ['30 573 013.29', '30 531 474.72', '41 538.57'];
+const REP_ROWS = {
+  contracts: [
+    ['Договор эквайринга № 11', '', '15 216 415.29', '15 193 757.22', '22 658.07'],
+    ['Сбербанк', '', '611 420.00', '597 539.50', '13 880.50'],
+    ['Новый договор', '', '5 120.00', '120.00', '5 000.00'],
+    ['Договор эквайринга №133', '', '11 803 000.00', '11 803 000.00', ''],
+    ['Договор эквайринга № 123', '', '1 544 000.00', '1 544 000.00', ''],
+    ['Сбербанк', '', '805 989.00', '805 989.00', ''],
+    ['Сбербанк', '', '451 000.00', '451 000.00', ''],
+    ['Новый договор', '', '136 069.00', '136 069.00', ''],
+  ],
+  companies: [
+    ['Торговая точка, ООО', '9312626209', '15 216 415.29', '15 193 757.22', '22 658.07'],
+    ['Упрощенный Иван Иванович, ИП', '931563254629', '611 420.00', '597 539.50', '13 880.50'],
+    ['Патентный Павел Павлович, ИП', '932563568987', '5 120.00', '120.00', '5 000.00'],
+    ['Доходный Герман Исаакович, ИП', '760440094864', '11 939 069.00', '11 939 069.00', ''],
+    ['ОСНОва, ООО', '2145492416', '1 544 000.00', '1 544 000.00', ''],
+    ['АУСН-Сервис, ООО', '2795300175', '805 989.00', '805 989.00', ''],
+    ['Выгодный НДС, ООО', '5875752574', '451 000.00', '451 000.00', ''],
+  ],
+};
+let repMode = 'contracts', repActive = -1;
+const money = (v, cls = '') => { if (!v) return ''; const [r, k] = v.split('.'); return `${r}<small class="${k === '00' ? 'is-zero' : cls}">.${k}</small>`; };
+const repTable = () => {
+  const tree = repMode === 'companies';
+  const head = `<div class="rt__h rt__grp" style="grid-column:1/3"></div>
+    <div class="rt__h rt__grp rt__grp--r rt__sep" style="grid-column:3/4">На начало</div>
+    <div class="rt__h rt__grp rt__sep" style="grid-column:4/6">Обороты</div>
+    <div class="rt__h rt__grp rt__grp--r rt__grp--last" style="grid-column:6/7">На конец</div>
+    <div class="rt__h rt__sub" style="grid-column:1/3"></div>
+    ${[['Ждем<br>от банка', ' rt__sep'], ['Оплачено<br>покупателями', ''], ['Поступило<br>от банка', ' rt__sep'], ['Ждем<br>от банка', ' rt__sub--last']].map(([t, c]) => `<div class="rt__h rt__sub${c}">${t}</div>`).join('')}
+    <div class="rt__tot" style="grid-column:1/3"></div><div class="rt__tot rt__sep"></div>
+    <div class="rt__tot">${money(REP_TOTAL[0])}</div><div class="rt__tot rt__sep">${money(REP_TOTAL[1])}</div><div class="rt__tot rt__tot--last">${money(REP_TOTAL[2])}</div>
+    <div class="rt__head-line"></div>`;
+  const errRow = chk.st === 'found' && chk.sel >= 0 ? ORDER()[chk.sel].row : -1;
+  const rows = REP_ROWS[repMode].map(([name, inn, d, c, end], i) => `<div class="rt__row${i === repActive ? ' is-active' : ''}${i === errRow ? ' is-err' : ''}" data-row="${i}">
+      <div class="rt__mark"></div>
+      <div class="rt__name">${tree ? '<i class="rt__exp" data-toast="Раскрытие компании — в следующих пунктах"></i>' : ''}<span>${name}</span>${inn ? `<span class="rt__inn">${inn}</span>` : ''}</div>
+      <div class="rt__num rt__sep"></div>
+      <div class="rt__num">${money(d)}</div><div class="rt__num rt__sep">${money(c)}</div><div class="rt__num">${money(end)}</div></div>`).join('');
+  return `<div class="rt">${head}${rows}</div>`;
+};
+const TB = [['&#xEA2F;', 'Развернуть'], ['Σ<sub>↓</sub>', 'Итоги', 'sum'], ['&#xE633;', 'Печать'], ['&#xEA31;', 'Выгрузить'], ['&#xE6A7;', 'Ссылка'], ['&#xEA8A;', 'Развернуть все'], ['&#xE644;', 'Отметить']];
+/* ---------- План Б: «Журнал проверки» вместо «Мастера запуска» ---------- */
+// этапы проверки = шаги маршрута «Диагностика учета эквайринговых операций»
+const CHECKS = ['Проверяем начальные остатки', 'Проверяем оплаты от покупателей', 'Сверяем оплаты с поступлениями',
+  'Проверяем поступления от банка', 'Проверяем договор в поступлениях', 'Сверяем поступления с оплатами'];
+// найденное: row — строка отчета (сущность), null — узел «Общее»; lvl: err — значительная ошибка, warn — предупреждение
+const ISSUES = [
+  { id: 'kom', row: 0, step: 5, lvl: 'err', text: 'Поступлений от эквайера меньше, чем оплат, на 22 658,07',
+    hint: 'В <a data-toast="Список платежей без комиссии — в демо не входит">12 платежах</a> «Поступление от эквайера» не заполнена комиссия. Если эквайер удерживает комиссию, укажите ее в платеже.',
+    btns: [['Заполнить комиссию', 'Платежи без комиссии открыты списком']] },
+  { id: 'wait', row: 1, step: 5, lvl: 'warn', text: 'Поступлений от эквайера меньше, чем оплат, на 13 880,50',
+    hint: 'Эквайер еще не перечислил деньги: после последних оплат прошло меньше двух рабочих дней. Дождитесь поступления.', btns: [] },
+  { id: 'none', row: 2, step: 3, lvl: 'err', text: 'Нет поступлений от эквайера по оплатам на 5 000,00',
+    hint: 'Возможные причины:<ul><li>не загружена выписка за период отчета;</li><li>у платежа неверный тип операции — нужен «Поступление от эквайера»;</li><li>платежи не проведены.</li></ul>',
+    btns: [['Загрузить банковскую выписку', 'Доп. маршрут «Загрузить банковскую выписку»']] },
+  { id: 'dog', row: null, step: 4, lvl: 'err', text: 'В <a data-toast="Список платежей без договора — в демо не входит">2 платежах</a> «Поступление от эквайера» не заполнен договор эквайринга',
+    hint: 'Укажите договор вручную. Чтобы он определялся автоматически, проверьте в договоре номер (мерчант из назначения платежа), ИНН и КПП банка и дату начала.',
+    btns: [['Создать договор', 'Доп. маршрут «Создать договор эквайринга»'], ['Создать Выручку розницы', 'Доп. маршрут «Создать Выручку розницы»']] },
+  { id: 'ost', row: null, step: 0, lvl: 'warn', text: 'Нет начального остатка по счету 57-03',
+    hint: 'Если на дату перехода в Saby эквайер еще не перечислил часть денег, введите эту сумму. Если нет — скройте запись глазом.',
+    btns: [['Ввести начальные остатки', 'Доп. маршрут «Ввести начальные остатки»']] },
+];
+const CHK0 = () => ({ st: 'off', open: true, low: false, sel: -1, prog: 0, done: new Set(), ign: new Set(), closed: new Set() });
+let chk = CHK0(), runTimer;
+/* Варианты вида кнопки «Найти расхождения» — переключаются на панели у сценария «До проверки» */
+const BTN_VARS = {
+  'кн_primary_обводка': { title: 'Оранжевая кнопка', cls: 'rep__check--po-primary', near: 1, lupa: 1 },
+  'кн_secondary_обводка': { title: 'Синяя кнопка', cls: 'rep__check--po-secondary', near: 1, lupa: 1 },
+};
+let BTN = 'кн_primary_обводка';
+const SVG = {
+  check: '<svg viewBox="0 0 512 512"><g transform="translate(0 480) scale(1 -1)" fill="currentColor"><path d="M384 448H160V352H64V0H384V-32H64Q50 -32 41 -23Q32 -14 32 0V384L128 480H384Q396 480 406 470Q416 460 416 448V320H384ZM128 448 64 384H128ZM96 256V288H176V256ZM96 160V192H160V160Z"/><circle cx="320" cy="160" r="112" fill="none" stroke="currentColor" stroke-width="32"/><path d="M402 78L478 2" stroke="currentColor" stroke-width="48" stroke-linecap="round"/></g></svg>',   // Checkreport (cbuc-icons) с лупой вместо галки
+  fire: '<svg viewBox="0 0 24 24"><path d="M12 2.5c.6 3 3.8 4.8 3.8 9a3.8 3.8 0 0 1-7.6 0c0-1.6.7-2.9 1.8-3.8.1 1.4.7 2.4 1.8 2.8-.3-2.7-.6-5.3.2-8z" fill="#c2140a"/><path d="M6 20.5h12" stroke="#c2140a" stroke-width="2" stroke-linecap="round"/></svg>',
+  alert: '<svg viewBox="0 0 16 16"><path d="M8 1.5l7 12.5H1z" fill="#e6a119"/><path d="M8 6v4M8 11.6v.4" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  ok: '<svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="7" fill="#298e3c"/><path d="M4.6 8.2l2.3 2.3 4.5-4.6" fill="none" stroke="#fff" stroke-width="1.6"/></svg>',
+  eye: '<svg viewBox="0 0 16 16"><path d="M1 8s2.6-4.5 7-4.5S15 8 15 8s-2.6 4.5-7 4.5S1 8 1 8z" fill="none" stroke="currentColor" stroke-width="1.3"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg>',
+};
+const isActive = (x) => !chk.done.has(x.id) && !chk.ign.has(x.id);
+// порядок записей = порядок в дереве: строки отчета сверху вниз, затем «Общее»
+const ORDER = () => [...ISSUES].sort((a, b) => (a.row ?? 99) - (b.row ?? 99));
+function cjState() {
+  if (chk.st === 'run') return { cls: '', ic: '<span class="cj__ic24 cj__ic24--spin">&#xE62C;</span>', title: 'Выполняется проверка отчета', cnt: '' };
+  if (chk.st === 'ok') return { cls: 'cj--ok', ic: `<span class="cj__ic24">${SVG.ok}</span>`, title: 'Ошибок нет', cnt: '' };
+  const act = ISSUES.filter(isActive);
+  if (!act.length) return { cls: 'cj--ok', ic: `<span class="cj__ic24">${SVG.ok}</span>`, title: 'Ошибки исправлены', cnt: '' };
+  if (act.some(x => x.lvl === 'err')) return { cls: '', ic: `<span class="cj__ic24">${SVG.fire}</span>`, title: 'Найденные ошибки', cnt: act.length };
+  return { cls: 'cj--warn', ic: `<span class="cj__ic24">${SVG.alert.replace('16 16', '16 16')}</span>`, title: 'Найденные предупреждения', cnt: act.length };
+}
+const recIcon = (x) => chk.done.has(x.id) ? SVG.ok : x.lvl === 'warn' ? SVG.alert : '!';
+const rec = (x) => {
+  const i = ORDER().indexOf(x);
+  const cls = (chk.sel === i ? ' is-sel' : '') + (chk.done.has(x.id) ? ' is-done' : '') + (chk.ign.has(x.id) ? ' is-ign' : '');
+  return `<div class="cj__rec${cls}" data-issue="${i}"><span class="cj__ic">${recIcon(x)}</span>
+    <div class="cj__txt"><div class="cj__main">${x.text}</div><div class="cj__hint">${x.hint}</div>
+      ${x.btns.length ? `<div class="cj__btns">${x.btns.map(([t, m]) => `<button class="cj__btn" type="button" data-fix="${x.id}" data-msg="${m}">${t}</button>`).join('')}</div>` : ''}</div>
+    <span class="cj__eye" data-ign="${x.id}" title="${chk.ign.has(x.id) ? 'Учитывать' : 'Не учитывать'}">${SVG.eye}</span></div>`;
+};
+const cjTree = () => {
+  const rows = REP_ROWS[repMode];
+  const groups = [];
+  ORDER().forEach(x => { const k = x.row ?? 'common'; let g = groups.find(g => g.k === k);
+    if (!g) groups.push(g = { k, name: x.row == null ? 'Общее' : rows[x.row][0], items: [] }); g.items.push(x); });
+  return groups.map(g => { const open = !chk.closed.has(String(g.k)); const n = g.items.filter(isActive).length;
+    return `<div class="cj__node${open ? ' is-open' : ''}${n ? '' : ' is-clean'}" data-node="${g.k}"><i></i><b>${g.name}</b><em>${n || '✓'}</em></div>${open ? g.items.map(rec).join('') : ''}`; }).join('');
+};
+const cjRun = () => {
+  const found = ISSUES.filter(x => x.step < chk.prog).length;
+  return `<div class="cj-run"><div class="cj-run__now">${CHECKS[Math.min(chk.prog, 5)]}…</div>
+    <div class="cj-run__bar"><i style="width:${Math.round(chk.prog / 6 * 100)}%"></i></div>
+    <div class="cj-run__found">${found ? `Найдено ошибок: ${found}<a data-showpart>Показать найденные</a>` : '&nbsp;'}</div>
+    <ol>${CHECKS.map((c, i) => { const n = ISSUES.filter(x => x.step === i).length;
+      return `<li class="${i < chk.prog ? 'is-done' : i === chk.prog ? 'is-now' : ''}">${c}${i < chk.prog && n ? `<small>${n}</small>` : ''}</li>`; }).join('')}</ol></div>`;
+};
+const cjEmpty = () => `<div class="cj-empty"><svg viewBox="0 0 96 96"><circle cx="48" cy="48" r="44" fill="#e0f5e0"/><path d="M30 49l12 12 25-26" fill="none" stroke="#298e3c" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div><h4>Расхождений по счету 57-03 нет</h4><p>Проверяйте учет эквайринга регулярно, чтобы вовремя находить и исправлять расхождения.</p></div></div>`;
+const journal = () => {
+  if (chk.st === 'off' || chk.st === 'start') return '';
+  const s = cjState(), list = chk.st === 'found';
+  const order = ORDER(), n = order.length;
+  const arrows = list && s.cnt ? `<span class="cj__arr cj__arr--prev${chk.sel <= 0 ? ' is-ro' : ''}" data-nav="-1" title="Предыдущая"></span><span class="cj__arr cj__arr--next${chk.sel >= n - 1 ? ' is-ro' : ''}" data-nav="1" title="Следующая"></span>` : '';
+  if (!chk.open) {
+    const cur = list && chk.sel >= 0 ? order[chk.sel] : null;
+    return `<div class="cj-mini ${s.cls}" data-expand>${cur ? `${s.ic}<span class="cj-mini__txt">${cur.text.replace(/<[^>]+>/g, '')}</span>`
+      : `${s.ic}<span class="cj__title">${s.title}</span>${s.cnt ? `<span class="cj__cnt">${s.cnt}</span>` : ''}`}${arrows}</div>`;
+  }
+  const date = chk.st === 'run' ? '' : `<span class="cj__date">25 ноя'26 15:30</span><span class="cj__re" title="Перепроверить" data-recheck>&#xE62C;</span>`;
+  const body = chk.st === 'run' ? cjRun() : chk.st === 'ok' ? cjEmpty() : cjTree();
+  return `<section class="cj ${s.cls}${chk.low ? ' is-low' : ''}" aria-label="Журнал проверки">
+    <div class="cj__head">${s.ic}<span class="cj__title">${s.title}</span>${s.cnt ? `<span class="cj__cnt">${s.cnt}</span>` : ''}${date}<span class="cj__sp"></span>
+      ${list ? '<span class="cj__hb cj__hb--f" title="Фильтр" data-toast="Фильтр: ошибки / предупреждения / скрытые">&#xE94C;</span>' : ''}${arrows}
+      ${chk.st === 'run' ? '' : `<span class="cj__hb cj__hb--sz" title="${chk.low ? 'Увеличить' : 'Уменьшить'} высоту" data-low></span>`}
+      <span class="cj__hb cj__hb--x" title="Свернуть" data-collapse>&#xE66C;</span></div>
+    <div class="cj__body">${body}</div></section>`;
+};
+function runCheck() {
+  clearInterval(runTimer);
+  Object.assign(chk, { st: 'run', open: true, prog: 0, sel: -1 }); drawReport();
+  runTimer = setInterval(() => { chk.prog++; if (chk.prog >= 6) { clearInterval(runTimer); chk.st = 'found'; } drawReport(); }, 700);
+}
+function selectIssue(i) {
+  const order = ORDER(); if (i < 0 || i >= order.length) return;
+  chk.sel = i; const x = order[i]; repActive = x.row ?? -1; drawReport();
+  const r = repEl.querySelector(`.rt__row[data-row="${repActive}"] > div`);   // подскролл сущности в отчете
+  if (r) { const b = repEl.querySelector('.rep__body'); b.scrollTop = Math.max(0, r.offsetTop - 120); }
+  // прокручиваем только список журнала: scrollIntoView сдвигал всю панель отчета и рамку демо
+  const list = repEl.querySelector('.cj__body'), cur = repEl.querySelector('.cj__rec.is-sel');
+  if (list && cur) {
+    const top = cur.offsetTop - list.offsetTop, bottom = top + cur.offsetHeight;
+    if (top < list.scrollTop) list.scrollTop = top - 8;
+    else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight + 8;
+  }
+}
+
+const reportPanel = () => `<div class="rep__main">
+    <div class="rep__top${chk.st !== 'off' && BTN_VARS[BTN].near ? ' rep__top--near' : ''}"><h1 class="rep__title">Расчеты по эквайрингу</h1>
+      ${chk.st !== 'off' ? `<button class="rep__check ${BTN_VARS[BTN].cls}" type="button" data-checkbtn title="Найти расхождения"><i class="rep__check-ic">${BTN_VARS[BTN].lupa ? SVG.check : '&#xEB21;'}</i><span class="rep__check-t">Найти расхождения</span></button>` : ''}
+      <span class="rep__built">построен в 15:28<i title="Перестроить" data-toast="Отчет перестроен">&#xE62C;</i></span>
+      <div class="rep__search">Найти</div></div>
+    <div class="rep__filters"><span class="rep__funnel" title="Фильтр" data-toast="Окно «Фильтр» — пункт 4">&#xE94C;</span>
+      <span class="rep__chip rep__chip--period" data-toast="Выбор периода — пункт 4">Ноябрь’26</span>
+      <span class="rep__chip" data-toast="Окно «Фильтр» — пункт 4">Все юрлица</span></div>
+    <div class="rep__body"${chk.st !== 'off' && chk.st !== 'start' && chk.open ? ` style="padding-bottom:${chk.low ? 200 : 330}px"` : ''}>${repTable()}</div>
+    ${journal()}</div>
+  <aside class="rep__tb"><div class="rep__close" title="Закрыть" data-close>&#xE66C;</div>
+    ${TB.map(([ic, t, k]) => `<div class="rep__btn${k ? ' rep__btn--' + k : ''}" title="${t}" data-toast="«${t}» — в демо не входит">${ic}</div>`).join('')}
+    <div class="side-toolbar__bottom"><div class="round" title="Заметки">&#xEA42;</div>${DATE}
+      <div class="round" title="Звонки">&#xE636;</div><div class="round" title="Сообщения">&#xE65D;</div><div class="round round--help" title="Помощь">&#xE9C9;</div></div></aside>`;
+
+/* ---------- Экраны ---------- */
+const SCREENS = { 'оплаты': paymentsPage };
+const REPORTS = { 'отчет_договоры': 'contracts', 'отчет_компании': 'companies' };
+const repEl = document.getElementById('rep');
+const drawReport = () => {   // перерисовка с сохранением прокрутки отчета и журнала
+  const keep = ['.rep__body', '.cj__body'].map(s => repEl.querySelector(s)?.scrollTop || 0);
+  repEl.innerHTML = reportPanel();
+  ['.rep__body', '.cj__body'].forEach((s, i) => { const el = repEl.querySelector(s); if (el) el.scrollTop = keep[i]; });
+};
+// сценарии плана Б: [состояние журнала, доработка]
+const CHECK_SCN = {
+  'чек_старт':   () => ({ st: 'start' }),
+  'чек_идет':    () => ({ st: 'run', prog: 4 }),
+  'чек_ошибки':  () => ({ st: 'found' }),
+  'чек_часть':   () => ({ st: 'found', done: new Set(['kom', 'dog']), ign: new Set(['wait']) }),
+  'чек_свернут': () => ({ st: 'found', open: false, sel: 0 }),
+  'чек_ок':      () => ({ st: 'ok' }),
+};
+
+const stage = document.getElementById('stage');
+const pageEl = document.getElementById('page');
+const toastEl = document.getElementById('toast');
+let toastTimer;
+function toast(msg) {
+  toastEl.textContent = msg; toastEl.classList.add('is-shown');
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('is-shown'), 1800);
+}
+let frame;
+function render(id) {
+  if (BTN_VARS[id]) { BTN = id; id = 'чек_старт'; }
+  pageEl.innerHTML = paymentsPage();
+  clearInterval(runTimer);
+  chk = Object.assign(CHK0(), CHECK_SCN[id] ? CHECK_SCN[id]() : {});
+  const mode = REPORTS[id] || (CHECK_SCN[id] && 'contracts');
+  repEl.hidden = !mode;
+  if (mode) { repMode = mode; repActive = -1; drawReport(); if (chk.sel >= 0) selectIssue(chk.sel); }
+}
+stage.addEventListener('click', (e) => {
+  const on = (a) => e.target.closest(`[${a}]`);
+  let el;
+  if ((el = on('data-fix'))) { toast(el.dataset.msg); chk.done.add(el.dataset.fix); drawReport(); return; }   // демо: после перехода считаем исправленным
+  if ((el = on('data-ign'))) { const id = el.dataset.ign; chk.ign.has(id) ? chk.ign.delete(id) : chk.ign.add(id); drawReport(); return; }
+  if ((el = on('data-toast'))) { toast(el.dataset.toast); return; }
+  if (on('data-close')) { frame.select('оплаты'); return; }
+  if (on('data-checkbtn')) { runCheck(); return; }
+  if (on('data-run') || on('data-recheck')) { runCheck(); return; }
+  if (on('data-showpart')) { clearInterval(runTimer); chk.st = 'found'; drawReport(); return; }
+  if (on('data-collapse')) { chk.open = false; drawReport(); return; }
+  if ((el = on('data-nav'))) { if (!el.classList.contains('is-ro')) selectIssue(chk.sel + +el.dataset.nav); return; }
+  if (on('data-expand')) { chk.open = true; drawReport(); return; }
+  if (on('data-low')) { chk.low = !chk.low; drawReport(); return; }
+  if ((el = on('data-node'))) { const k = el.dataset.node; chk.closed.has(k) ? chk.closed.delete(k) : chk.closed.add(k); drawReport(); return; }
+  if ((el = on('data-issue'))) { selectIssue(+el.dataset.issue); return; }
+  const row = on('data-row'); if (row) { repActive = +row.dataset.row;   // клик по строке с ошибкой выбирает ее в журнале
+    const i = chk.st === 'found' ? ORDER().findIndex(x => x.row === repActive) : -1; if (i >= 0) { selectIssue(i); return; } drawReport(); }
+});
+
+frame = DemoFrame.mount({
+  stage,
+  width: 1024, height: 768,
+  devices: [{ id: 'laptop', icon: 'laptop', label: 'Ноутбук', size: '1024х768', name: 'ноутбук' }],
+  scenarios: [
+    { group: 'Расчеты по эквайрингу', items: [
+      { id: 'отчет_договоры', title: 'По договорам' },
+      { id: 'отчет_компании', title: 'Детализация: Наша компания' } ] },
+    { group: 'План Б: журнал проверки', items: [
+      { id: 'чек_старт', title: 'Типовое', variants: Object.entries(BTN_VARS).map(([id, v]) => ({ id, title: v.title })) },
+      { id: 'чек_идет', title: 'Идет проверка' },
+      { id: 'чек_ошибки', title: 'Найдены ошибки' },
+      { id: 'чек_часть', title: 'Часть исправлена' },
+      { id: 'чек_свернут', title: 'Журнал свернут' },
+      { id: 'чек_ок', title: 'Ошибок нет' } ] },
+    { group: 'Эквайринг', items: [ { id: 'оплаты', title: 'Оплаты (фон)' } ] },
+  ],
+  links: [
+    { title: 'Прод: Эквайринг → Оплаты', href: 'https://bu.sabyd.ru/page/acquiring-main-payments' },
+    { title: 'Демо главной Эквайринга', href: 'https://peabueva.github.io/acquiring/' },
+  ],
+  value: { scenario: 'отчет_договоры' },
+  onChange({ scenario, variant }) { render(variant || scenario); },
+});
+render('отчет_договоры');
+</script>
+</body>
+</html>
