@@ -365,7 +365,6 @@
   .rep__top--near .rep__check--po-secondary { border: 1px solid #b7cdea; /* secondary pale outline */ background: #fff; }
   .rep__top--near .rep__check--po-secondary:hover { background: #f0f5fc; }
   .rep__check--po-secondary .rep__check-ic svg { color: #313e78; }
-    box-shadow: 0 4px 24px rgba(0,0,0,.16); /* нет токена */ font-size: 14px; line-height: 19px; color: #000; }
 
   /* журнал: высота по умолчанию 400 по стандарту, на экране 768 берем 330; «уменьшить высоту» — 200 */
   .cj { position: absolute; left: 0; right: 0; bottom: 0; height: 330px; z-index: 5; display: flex; flex-direction: column;
@@ -712,7 +711,8 @@ function render(id) {
   chk = Object.assign(CHK0(), CHECK_SCN[id] ? CHECK_SCN[id]() : {});
   const mode = REPORTS[id] || (CHECK_SCN[id] && 'contracts');
   repEl.hidden = !mode;
-  if (mode) { repMode = mode; repActive = -1; drawReport(); if (chk.sel >= 0) selectIssue(chk.sel); }
+  if (mode) { repMode = mode; repActive = -1; repEl.innerHTML = ''; drawReport();   // новый сценарий — прокрутка с нуля
+ if (chk.sel >= 0) selectIssue(chk.sel); }
 }
 stage.addEventListener('click', (e) => {
   const on = (a) => e.target.closest(`[${a}]`);
@@ -739,7 +739,7 @@ frame = DemoFrame.mount({
   width: 1024, height: 768,
   devices: [{ id: 'laptop', icon: 'laptop', label: 'Ноутбук', size: '1024х768', name: 'ноутбук' }],
   scenarios: [
-    { group: 'Расчеты по эквайрингу', items: [
+    { group: 'Расчеты по эквайрингу', hidden: true, items: [
       { id: 'отчет_договоры', title: 'По договорам' },
       { id: 'отчет_компании', title: 'Детализация: Наша компания' } ] },
     { group: 'План Б: журнал проверки', items: [
@@ -749,16 +749,16 @@ frame = DemoFrame.mount({
       { id: 'чек_часть', title: 'Часть исправлена' },
       { id: 'чек_свернут', title: 'Журнал свернут' },
       { id: 'чек_ок', title: 'Ошибок нет' } ] },
-    { group: 'Эквайринг', items: [ { id: 'оплаты', title: 'Оплаты (фон)' } ] },
+    { group: 'Эквайринг', hidden: true, items: [ { id: 'оплаты', title: 'Оплаты (фон)' } ] },   // скрыто с панели, нужно для «Закрыть»
   ],
   links: [
     { title: 'Прод: Эквайринг → Оплаты', href: 'https://bu.sabyd.ru/page/acquiring-main-payments' },
     { title: 'Демо главной Эквайринга', href: 'https://peabueva.github.io/acquiring/' },
   ],
-  value: { scenario: 'отчет_договоры' },
+  value: { scenario: 'чек_старт', variant: 'кн_primary_обводка' },
   onChange({ scenario, variant }) { render(variant || scenario); },
 });
-render('отчет_договоры');
+render('чек_старт');
 </script>
 </body>
 </html>
