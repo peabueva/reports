@@ -372,9 +372,9 @@
   .rep__check--po-secondary .rep__check-ic svg { color: #313e78; }
 
   /* журнал: высота по умолчанию 400 по стандарту, на экране 768 берем 330; «уменьшить высоту» — 200 */
-  .cj { position: absolute; left: 0; right: 0; bottom: 0; height: 330px; z-index: 5; display: flex; flex-direction: column;
-    border-radius: 20px 20px 0 0; background: #ffdddb; /* @danger_hover_same_background-color */ box-shadow: 0 -4px 16px rgba(0,0,0,.10); transition: height .5s; }
-  .cj.is-low { height: 200px; }
+  .cj { position: absolute; left: 0; right: 0; bottom: 0; max-height: 330px; z-index: 5;   /* высота по контенту, не больше 330 */ display: flex; flex-direction: column;
+    border-radius: 20px 20px 0 0; background: #ffdddb; /* @danger_hover_same_background-color */ box-shadow: 0 -4px 16px rgba(0,0,0,.10); transition: max-height .5s; }
+  .cj.is-low { max-height: 200px; }
   .cj--warn { background: #fff3db; /* @warning_hover_same_background-color */ }
   .cj--ok { background: #e0f5e0; /* @success_hover_same_background-color */ }
   .cj__head { height: 44px; flex: none; display: flex; align-items: center; padding: 0 8px 0 12px; gap: 8px; }
@@ -400,7 +400,7 @@
   .cj__arr--prev::before { transform: rotate(135deg); margin: 0 0 0 4px; }
   .cj__arr--next::before { transform: rotate(-45deg); margin: 0 4px 0 0; }
   .cj__arr.is-ro { opacity: .3; cursor: default; }
-  .cj__body { flex: 1 1 0; min-height: 0; overflow: auto; margin: 0 8px 8px; background: #fff; border-radius: 12px; padding: 5px 0 8px; font-size: 14px; line-height: 19px; }
+  .cj__body { flex: 0 1 auto; min-height: 0; overflow: auto; margin: 0 8px 8px; background: #fff; border-radius: 12px; padding: 5px 0 8px; font-size: 14px; line-height: 19px; }
   .cj__node { height: 37px; display: flex; align-items: center; padding-left: 4px; cursor: pointer; }
   .cj__node i { width: 30px; display: flex; justify-content: center; }
   .cj__node i::before { content: ""; width: 7px; height: 7px; border: solid #8991a9; border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); }
@@ -410,6 +410,13 @@
   .cj__node.is-clean em { color: #298e3c; }
   /* вложенный уровень (договор внутри компании) и его ошибки — сдвиг на ширину стрелки (30px), как в «Ошибках от госоргана» */
   .cj__node--sub { padding-left: 34px; }
+  .cj__node--tips b { color: #656c87; }   /* рекомендации — не ошибки: без счетчика, приглушенно */
+  .cj__tips .cj__tip { padding: 4px 12px 4px 64px; }
+  .cj__nocause { padding: 4px 12px 4px 16px; }
+  .cj__nocause p { margin: 4px 0 6px; }
+  .cj__nocause .cj__tips .cj__tip { padding-left: 0; }
+  .cj__help { color: #8991a9; }
+  .cj__flat .cj__rec { padding-left: 12px; }   /* текст ошибки на одной линии с заголовком «Найденные ошибки» */
   .cj__node--sub ~ .cj__rec { padding-left: 70px; }
   .cj__rec { display: flex; gap: 8px; padding: 6px 12px 6px 40px; cursor: pointer; position: relative; }
   .cj__rec:hover { background: #f5f7fa; }
@@ -547,6 +554,7 @@ const REP_ROWS = {
     ['Сбербанк', '', '', '', ''],                                                     // то же
     ['Новый договор', '', '128 569.00', '136 069.00', '-7 500.00'],                    // выручка не проведена / не совпадает со сменой
     ['Без аналитики', '', '', '1 544 000.00', '-1 544 000.00'],                         // поступления без договора
+    ['Райффайзенбанк', '', '285 064.32', '295 515.38', '-10 451.06'],                // только сценарий «Одна организация, один договор»: «Выручка розницы» не проведена
   ],
   companies: [
     ['Торговая точка, ООО', '', '15 216 415.29', '15 193 757.22', '22 658.07'],
@@ -564,9 +572,17 @@ const COMPANIES = [
   ['Ресторан Море', '932563568987', [2]],
   ['Доходный дом', '760440094864', [3]],
   ['Столовая Юность', '931563254629', [7]],
+  ['Доходный дом', '760440094864', [9], 'one'],
+  ['Вкусное место', '5875752574', [1], 'one'],   // сценарий «Причина не найдена»: один договор Сбербанк, ошибок нет   // 'one' — только в сценарии «Одна организация, один договор», в общем списке не показываем
 ];
+// отбор «Наша компания»: null — все юрлица, иначе индекс в COMPANIES (сценарии «Одна организация…»)
+let ORG = null, PERIOD = 'Ноябрь’26', SCN = '';   // PERIOD — подпись периода в строке фильтра, SCN — текущий сценарий
+const FLAT = () => ORG != null;   // одна организация: без строки компании в отчете и без узла компании в журнале, отбор по компании не показываем, «Общего» нет
+const VIS = () => COMPANIES.map((c, g) => [c, g]).filter(([c, g]) => ORG == null ? !c[3] : g === ORG);   // видимые компании: [[компания, индекс]]
+const visRows = () => VIS().flatMap(([[, , ids]]) => ids);
+const ISS = () => ISSUES.filter(x => (!x.scn || x.scn === SCN) && (x.row == null ? !FLAT() : visRows().includes(x.row)));   // ошибки по видимым договорам; scn — ошибка только для своего сценария
 const grpClosed = new Set();   // свернутые компании
-const POS = {}; COMPANIES.forEach(([, , ids]) => ids.forEach(i => { POS[i] = Object.keys(POS).length; }));   // порядок строк на экране
+const POS = {}; COMPANIES.forEach(([, , ids]) => ids.forEach(i => { if (POS[i] == null) POS[i] = Object.keys(POS).length; }));   // порядок строк на экране
 const num = (v) => v ? (v[0] === '-' ? -1 : 1) * parseFloat(v.replace('-', '').replace(/\s/g, '')) : 0;
 const fmt = (n) => { if (Math.abs(n) < 0.005) return ''; const [r, k] = Math.abs(n).toFixed(2).split('.'); return (n < 0 ? '-' : '') + r.replace(/\B(?=(\d{3})+(?!\d))/g, ' ') + '.' + k; };
 let repMode = 'contracts', repActive = -1;
@@ -576,7 +592,9 @@ const FIX = {
   nocr:  { rows: { 3: [, 8000000] } },                                           // загружена выписка за 14-15 ноября (+, число — прибавить)
   nopost: { rows: { 3: [, 3803000] } },                                          // проведены 3 платежа
   bez:   { rows: { 0: [, 1544000], 8: [, ''] } },                                // поступления из «Без аналитики» ушли на договор № 11
-  post:  { rows: { 7: ['136 069.00'] } },                                        // «Выручка розницы» за 14 ноября проведена
+  post:  { rows: { 7: ['136 069.00'] } },
+  nopost2: { rows: { 1: [, 13880.5] } },                                         // проведены 2 поступления Сбербанка на 13 880,50
+  post1: { rows: { 9: ['295 515.38'] } },                                        // проведены 2 «Выручки розницы» на 10 451,06                                        // «Выручка розницы» за 14 ноября проведена
 };
 const repRow = (i) => { const r = REP_ROWS[repMode][i]; if (repMode !== 'contracts') return r;
   let [name, inn, d, c] = r;
@@ -584,7 +602,7 @@ const repRow = (i) => { const r = REP_ROWS[repMode][i]; if (repMode !== 'contrac
   done.forEach(id => { const f = FIX[id]?.rows[i]; if (f) { const set = (v, x) => v === undefined ? x : typeof v === 'number' ? fmt(num(x) + v) : v; d = set(f[0], d); c = set(f[1], c); } });
   return [name, inn, d, c, fmt(num(d) - num(c))]; };
 const repTotal = () => repMode !== 'contracts' ? REP_TOTAL
-  : [2, 3, 4].map(k => fmt(REP_ROWS.contracts.reduce((t, _, i) => t + num(repRow(i)[k]), 0)));
+  : [2, 3, 4].map(k => fmt(visRows().reduce((t, i) => t + num(repRow(i)[k]), 0)));
 const isEmptyRow = (i) => !repRow(i).slice(2).some(Boolean);
 const money = (v, cls = '') => { if (!v) return ''; const neg = v[0] === '-'; const [r, k] = (neg ? v.slice(1) : v).split('.');
   const html = `${neg ? '−' : ''}${r}<small class="${k === '00' ? 'is-zero' : cls}">.${k}</small>`; return neg ? `<span class="is-neg">${html}</span>` : html; };
@@ -608,7 +626,9 @@ const repTable = () => {
     return line(`${child ? ' rt__row--child' : ''}${i === repActive ? ' is-active' : ''}${i === errRow ? ' is-err' : ''}`, `data-row="${i}"`,
       `${tree ? '<i class="rt__exp" data-toast="Раскрытие компании — в следующих пунктах"></i>' : ''}<span>${name}</span>${inn ? `<span class="rt__inn">${inn}</span>` : ''}`, d, c, end); };
   const rows = repMode === 'contracts'
-    ? COMPANIES.map(([co, inn, all], g) => { const open = !grpClosed.has(g), ids = all.filter(i => !isEmptyRow(i));   // пустая строка (напр. «Без аналитики») пропадает
+    ? VIS().map(([[co, inn, all], g]) => {
+        const open = !grpClosed.has(g), ids = all.filter(i => !isEmptyRow(i));   // пустая строка (напр. «Без аналитики») пропадает
+        if (FLAT()) return ids.map(i => contract(i, false)).join('');   // одна организация — без строки компании, сразу договоры
         const sum = (k) => fmt(ids.reduce((t, i) => t + num(repRow(i)[k]), 0));
         return line(' rt__row--grp', `data-grp="${g}"`, `<i class="rt__exp${open ? ' is-open' : ''}"></i><span>${co}</span>`, sum(2), sum(3), sum(4))
           + (open ? ids.map(i => contract(i, true)).join('') : ''); }).join('')
@@ -619,7 +639,7 @@ const TB = [['&#xEA2F;', 'Развернуть'], ['Σ<sub>↓</sub>', 'Итог
 /* ---------- План Б: «Журнал проверки» вместо «Мастера запуска» ---------- */
 // этапы проверки = шаги маршрута «Диагностика учета эквайринговых операций»
 const CHECKS = ['Проверяем начальные остатки', 'Проверяем оплаты от покупателей', 'Сверяем оплаты с поступлениями',
-  'Проверяем поступления от банка', 'Проверяем договор в поступлениях', 'Сверяем поступления с оплатами'];
+  'Проверяем поступления от банка', 'Проверяем договор в поступлениях'];
 // найденное: row — строка отчета (сущность), null — узел «Общее»; lvl: err — значительная ошибка, warn — предупреждение
 const DL = (t) => `<a data-toast="Список документов — в демо не входит">${t}</a>`;
 // список платежей в записи журнала: назначение серым в одну строку, сумма справа (банк — в названии договора, не повторяем)
@@ -650,6 +670,18 @@ const ISSUES = [
       ['12 ноя', 'Выручка розницы', 'Мили Новосибирск', '6 300.00'],
     ]),
     btns: [['Провести', 'Документ проведен']] },
+  { id: 'post1', row: 9, step: 2, lvl: 'err', text: 'Не проведена «Выручка розницы»',
+    hint: DOCS([
+      ['20 ноя', 'Выручка розницы', 'Кафе на Ленина', '6 581.06'],
+      ['19 ноя', 'Выручка розницы', 'Кафе на Ленина', '3 870.00'],
+    ]),
+    btns: [['Провести', 'Документы проведены']] },   // как у той же ошибки в основном сценарии
+  { id: 'nopost2', row: 1, step: 3, lvl: 'err', scn: 'чек_1орг_2дог', text: 'Не проведены поступления',
+    hint: PAYS([
+      ['', '8 120.50', 'Зачисление средств по операциям эквайринга. Мерчант №771000058'],
+      ['', '5 760.00', 'Зачисление средств по операциям эквайринга. Мерчант №771000058'],
+    ]),
+    btns: [['Провести все (2)', 'Поступления проведены']] },
   { id: 'bez', row: 8, step: 4, lvl: 'err', text: 'В «Поступлении от эквайера» не указан договор эквайринга',
     hint: PAYS([
       ['Сбербанк, ПАО', '512 000.00', 'Зачисление средств по операциям эквайринга. Мерчант №771000058'],
@@ -661,7 +693,7 @@ const ISSUES = [
     hint: 'Если на дату перехода в Saby эквайер еще не перечислил часть денег, введите эту сумму',
     btns: [['Ввести остатки', 'Доп. маршрут «Ввести начальные остатки»']] },
 ];
-const CHK0 = () => ({ st: 'off', open: true, low: false, sel: -1, prog: 0, done: new Set(), ign: new Set(), closed: new Set() });
+const CHK0 = () => ({ st: 'off', open: true, low: false, sel: -1, prog: 0, done: new Set(), ign: new Set(), closed: new Set(['tips']) });   // узел общих рекомендаций по умолчанию свернут
 let chk = CHK0(), runTimer;
 /* Варианты вида кнопки «Найти расхождения» — переключаются на панели у сценария «До проверки» */
 const BTN_VARS = {
@@ -678,16 +710,17 @@ const SVG = {
 };
 const isActive = (x) => !chk.done.has(x.id) && !chk.ign.has(x.id);
 // порядок записей = порядок в дереве: строки отчета сверху вниз, затем «Общее»
-const ORDER = () => [...ISSUES].sort((a, b) => (a.row == null ? 99 : POS[a.row]) - (b.row == null ? 99 : POS[b.row]));
+const ORDER = () => ISS().sort((a, b) => (a.row == null ? 99 : POS[a.row]) - (b.row == null ? 99 : POS[b.row]));
 function cjState() {
   if (chk.st === 'run') return { cls: '', ic: '<span class="cj__ic24 cj__ic24--spin">&#xE62C;</span>', title: 'Выполняется проверка отчета', cnt: '' };
+  if (chk.st === 'nocause') return { cls: 'cj--warn', ic: `<span class="cj__ic24">${SVG.alert}</span>`, title: 'Причина расхождения не найдена', cnt: '' };
   if (chk.st === 'ok') return { cls: 'cj--ok', ic: `<span class="cj__ic24">${SVG.ok}</span>`, title: 'Ошибок нет', cnt: '' };
-  const act = ISSUES.filter(isActive);
+  const act = ISS().filter(isActive);
   if (!act.length) return { cls: 'cj--ok', ic: `<span class="cj__ic24">${SVG.ok}</span>`, title: 'Ошибки исправлены', cnt: '' };
   if (act.some(x => x.lvl === 'err')) return { cls: '', ic: `<span class="cj__ic24">${SVG.fire}</span>`, title: 'Найденные ошибки', cnt: act.length };
   return { cls: 'cj--warn', ic: `<span class="cj__ic24">${SVG.alert.replace('16 16', '16 16')}</span>`, title: 'Найденные предупреждения', cnt: act.length };
 }
-const recIcon = (x) => chk.done.has(x.id) ? SVG.ok : x.lvl === 'warn' ? SVG.alert : '!';
+const recIcon = (x) => chk.done.has(x.id) ? SVG.ok : x.lvl === 'warn' ? SVG.alert : '';   // у ошибки иконку не выводим (место оставляем, чтобы текст не сдвигался)
 const rec = (x) => {
   const i = ORDER().indexOf(x);
   const cls = (chk.sel === i ? ' is-sel' : '') + (chk.done.has(x.id) ? ' is-done' : '') + (chk.ign.has(x.id) ? ' is-ign' : '');
@@ -697,7 +730,8 @@ const rec = (x) => {
       <div class="cj__hint">${x.hint}</div></div>
     <span class="cj__eye" data-ign="${x.id}" title="${chk.ign.has(x.id) ? 'Учитывать' : 'Не учитывать'}">${SVG.eye}</span></div>`;
 };
-const cjTree = () => {
+const cjTree0 = () => {
+  if (FLAT() && new Set(ORDER().map(x => x.row)).size === 1) return `<div class="cj__flat">${ORDER().map(rec).join('')}</div>`;   // одна организация и один договор — без узлов, сразу ошибки
   const rows = REP_ROWS[repMode];
   const groups = [];
   ORDER().forEach(x => { const k = x.row ?? 'common'; let g = groups.find(g => g.k === k);
@@ -706,37 +740,57 @@ const cjTree = () => {
     return `<div class="cj__node${cls}${open ? ' is-open' : ''}${n ? '' : ' is-clean'}" data-node="${k}"><i></i><b>${name}</b><em>${n || '✓'}</em></div>${open ? body() : ''}`; };
   const leaf = (g, cls) => node(g.k, g.name, g.items, cls, () => g.items.map(rec).join(''));
   if (repMode !== 'contracts') return groups.map(g => leaf(g, '')).join('');
+  if (FLAT()) return groups.map(g => leaf(g, '')).join('');   // одна организация — узлы договоров без компании
   // иерархия как в отчете: компания → договор → ошибки
   const out = []; let cur = null;
   groups.forEach(g => { const ci = g.k === 'common' ? -1 : COMPANIES.findIndex(([, , ids]) => ids.includes(g.k));
     if (ci < 0) { out.push(g); cur = null; return; }
     if (!cur || cur.ci !== ci) out.push(cur = { ci, list: [] }); cur.list.push(g); });
   return out.map(o => o.ci === undefined ? leaf(o, '')
-    : COMPANIES[o.ci][2].length === 1 ? leaf({ ...o.list[0], name: `${COMPANIES[o.ci][0]}, ${o.list[0].name}` }, '')   // у компании один договор — одним узлом через запятую
+    : COMPANIES[o.ci][2].length === 1 ? leaf(ORG != null ? o.list[0] : { ...o.list[0], name: `${COMPANIES[o.ci][0]}, ${o.list[0].name}` }, '')   // организация в отборе — пишем только договор   // у компании один договор — одним узлом через запятую
     : node('c' + o.ci, COMPANIES[o.ci][0], o.list.flatMap(g => g.items), '', () => o.list.map(g => leaf(g, ' cj__node--sub')).join(''))).join('');
 };
 const cjRun = () => {
-  const found = ISSUES.filter(x => x.step < chk.prog).length;
-  return `<div class="cj-run"><div class="cj-run__now">${CHECKS[Math.min(chk.prog, 5)]}…</div>
-    <div class="cj-run__bar"><i style="width:${Math.round(chk.prog / 6 * 100)}%"></i></div>
+  const found = ISS().filter(x => x.step < chk.prog).length;
+  return `<div class="cj-run"><div class="cj-run__now">${CHECKS[Math.min(chk.prog, CHECKS.length - 1)]}…</div>
+    <div class="cj-run__bar"><i style="width:${Math.round(chk.prog / CHECKS.length * 100)}%"></i></div>
     <div class="cj-run__found">${found ? `Найдено ошибок: ${found}<a data-showpart>Показать найденные</a>` : '&nbsp;'}</div>
-    <ol>${CHECKS.map((c, i) => { const n = ISSUES.filter(x => x.step === i).length;
+    <ol>${CHECKS.map((c, i) => { const n = ISS().filter(x => x.step === i).length;
       return `<li class="${i < chk.prog ? 'is-done' : i === chk.prog ? 'is-now' : ''}">${c}${i < chk.prog && n ? `<small>${n}</small>` : ''}</li>`; }).join('')}</ol></div>`;
 };
+// общие рекомендации — причины, которые проверка определить не может: [причина, что сделать]
+const TIPS = [
+  ['Неверный договор в «Выручке розницы»', 'Договор определяется по терминалу. Проверьте, что в договорах указаны все терминалы, и откройте «Выручку розницы» за дни расхождения.'],
+  ['Неверный договор в «Поступлении от эквайера»', 'Сверьте банк и номер договора из назначения платежа с договором в документе.'],
+  ['Неверный тип операции в платеже', 'Деньги от эквайера должны быть «Поступлением от эквайера», а не «Оплатой от покупателя».'],
+  ['Не указана комиссия банка', 'Если банк удерживает комиссию при зачислении, укажите ее в «Поступлении от эквайера».'],
+  ['Неверный способ расчета в чеке', 'На автономном терминале оплату картой пробили как наличные. Исправьте чеком коррекции.'],
+  ['Чеки коррекции', 'Проверьте, что чеки коррекции попали в «Выручку розницы» той смены.'],
+];
+const tipsList = () => TIPS.map(([t, h]) => `<div class="cj__tip"><div class="cj__main">${t}<span class="cj__acts"><button class="cj__link" type="button" data-toast="Статья справки «${t}»">как исправить</button></span></div><div class="cj__hint">${h}</div></div>`).join('');
+// вариант 1: в конце журнала с ошибками — свернутый узел без счетчика
+const tipsNode = () => { const open = !chk.closed.has('tips');
+  return `<div class="cj__node cj__node--tips${open ? ' is-open' : ''}" data-node="tips"><i></i><b>Если расхождение осталось</b></div>${open ? `<div class="cj__tips">${tipsList()}</div>` : ''}`; };
+const cjTree = () => cjTree0() + tipsNode();
+// вариант 2: ошибок не нашли, а расхождение есть
+const cjNoCause = () => { const [name, , , , end] = repRow(visRows()[0]);
+  return `<div class="cj__nocause"><p>По договору «${name}» поступлений меньше, чем оплат, на ${fmt(num(end)).replace('.', ',')}, но ошибок в учете мы не нашли. Проверьте другие причины:</p>
+    <div class="cj__tips">${tipsList()}</div>
+    <p class="cj__help">Не помогло? <button class="cj__link" type="button" data-toast="Чат с поддержкой">Напишите в поддержку</button></p></div>`; };
 const cjEmpty = () => `<div class="cj-empty"><svg viewBox="0 0 96 96"><circle cx="48" cy="48" r="44" fill="#e0f5e0"/><path d="M30 49l12 12 25-26" fill="none" stroke="#298e3c" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg>
   <div><h4>Расхождений по счету 57-03 нет</h4><p>Проверяйте учет эквайринга регулярно, чтобы вовремя находить и исправлять расхождения.</p></div></div>`;
 const journal = () => {
   if (chk.st === 'off' || chk.st === 'start') return '';
   const s = cjState(), list = chk.st === 'found';
   const order = ORDER(), n = order.length;
-  const arrows = list && s.cnt ? `<span class="cj__arr cj__arr--prev${chk.sel <= 0 ? ' is-ro' : ''}" data-nav="-1" title="Предыдущая"></span><span class="cj__arr cj__arr--next${chk.sel >= n - 1 ? ' is-ro' : ''}" data-nav="1" title="Следующая"></span>` : '';
+  const arrows = list && s.cnt && n > 1 ?   /* одна ошибка — стрелки не нужны */ `<span class="cj__arr cj__arr--prev${chk.sel <= 0 ? ' is-ro' : ''}" data-nav="-1" title="Предыдущая"></span><span class="cj__arr cj__arr--next${chk.sel >= n - 1 ? ' is-ro' : ''}" data-nav="1" title="Следующая"></span>` : '';
   if (!chk.open) {
     const cur = list && chk.sel >= 0 ? order[chk.sel] : null;
     return `<div class="cj-mini ${s.cls}" data-expand>${cur ? `${s.ic}<span class="cj-mini__txt">${cur.text.replace(/<[^>]+>/g, '')}</span>`
       : `${s.ic}<span class="cj__title">${s.title}</span>${s.cnt ? `<span class="cj__cnt">${s.cnt}</span>` : ''}`}${arrows}</div>`;
   }
   const date = chk.st === 'run' ? '' : `<span class="cj__date">25 ноя'26 15:30</span><span class="cj__re" title="Перепроверить" data-recheck>&#xE62C;</span>`;
-  const body = chk.st === 'run' ? cjRun() : chk.st === 'ok' ? cjEmpty() : cjTree();
+  const body = chk.st === 'run' ? cjRun() : chk.st === 'ok' ? cjEmpty() : chk.st === 'nocause' ? cjNoCause() : cjTree();
   return `<section class="cj ${s.cls}${chk.low ? ' is-low' : ''}" aria-label="Журнал проверки">
     <div class="cj__head">${s.ic}<span class="cj__title">${s.title}</span>${s.cnt ? `<span class="cj__cnt">${s.cnt}</span>` : ''}${date}<span class="cj__sp"></span>
       ${list ? '<span class="cj__hb cj__hb--f" title="Фильтр" data-toast="Фильтр: ошибки / предупреждения / скрытые">&#xE94C;</span>' : ''}${arrows}
@@ -747,7 +801,7 @@ const journal = () => {
 function runCheck() {
   clearInterval(runTimer);
   Object.assign(chk, { st: 'run', open: true, prog: 0, sel: -1 }); drawReport();
-  runTimer = setInterval(() => { chk.prog++; if (chk.prog >= 6) { clearInterval(runTimer); chk.st = 'found'; } drawReport(); }, 700);
+  runTimer = setInterval(() => { chk.prog++; if (chk.prog >= CHECKS.length) { clearInterval(runTimer); chk.st = 'found'; } drawReport(); }, 700);
 }
 function selectIssue(i) {
   const order = ORDER(); if (i < 0 || i >= order.length) return;
@@ -770,8 +824,8 @@ const reportPanel = () => `<div class="rep__main">
       <span class="rep__built">построен в 15:28<i title="Перестроить" data-toast="Отчет перестроен">&#xE62C;</i></span>
       <div class="rep__search">Найти</div></div>
     <div class="rep__filters"><span class="rep__funnel" title="Фильтр" data-toast="Окно «Фильтр» — пункт 4">&#xE94C;</span>
-      <span class="rep__chip rep__chip--period" data-toast="Выбор периода — пункт 4">Ноябрь’26</span>
-      <span class="rep__chip" data-toast="Окно «Фильтр» — пункт 4">Все юрлица</span></div>
+      <span class="rep__chip rep__chip--period" data-toast="Выбор периода — пункт 4">${PERIOD}</span>
+      ${FLAT() ? '' : `<span class="rep__chip" data-toast="Окно «Фильтр» — пункт 4">${ORG == null ? 'Все юрлица' : COMPANIES[ORG][0]}</span>`}</div>   <!-- одна организация — отбор по компании не показываем -->
     <div class="rep__body"${chk.st !== 'off' && chk.st !== 'start' && chk.open ? ` style="padding-bottom:${chk.low ? 200 : 330}px"` : ''}>${repTable()}</div>
     ${journal()}</div>
   <aside class="rep__tb"><div class="rep__close" title="Закрыть" data-close>&#xE66C;</div>
@@ -796,7 +850,12 @@ const CHECK_SCN = {
   'чек_часть':   () => ({ st: 'found', done: new Set(['late', 'post']), ign: new Set(['ost']) }),
   'чек_свернут': () => ({ st: 'found', open: false, sel: 0 }),
   'чек_ок':      () => ({ st: 'ok' }),
+  'чек_1орг_1дог': () => ({ st: 'found' }),
+  'чек_1орг_2дог': () => ({ st: 'found' }),
+  'чек_нет_причины': () => ({ st: 'nocause' }),
 };
+// сценарии с отбором по одной организации: id → название компании
+const ORG_SCN = { 'чек_1орг_1дог': (c) => c[3] === 'one' && c[0] === 'Доходный дом', 'чек_нет_причины': (c) => c[3] === 'one' && c[0] === 'Вкусное место', 'чек_1орг_2дог': (c) => c[0] === 'Вкусное место' };
 
 const stage = document.getElementById('stage');
 const pageEl = document.getElementById('page');
@@ -812,6 +871,8 @@ function render(id) {
   pageEl.innerHTML = paymentsPage();
   clearInterval(runTimer);
   chk = Object.assign(CHK0(), CHECK_SCN[id] ? CHECK_SCN[id]() : {});
+  ORG = ORG_SCN[id] ? COMPANIES.findIndex(ORG_SCN[id]) : null;
+  PERIOD = ORG_SCN[id] ? 'Весь период' : 'Ноябрь’26'; SCN = id;
   const mode = REPORTS[id] || (CHECK_SCN[id] && 'contracts');
   repEl.hidden = !mode;
   if (mode) { repMode = mode; repActive = -1; grpClosed.clear(); repEl.innerHTML = ''; drawReport();   // новый сценарий — прокрутка с нуля
@@ -847,12 +908,15 @@ frame = DemoFrame.mount({
       { id: 'отчет_договоры', title: 'По договорам' },
       { id: 'отчет_компании', title: 'Детализация: Наша компания' } ] },
     { group: 'План Б: журнал проверки', items: [
+      { id: 'чек_1орг_1дог', title: 'Одна организация, один договор' },
+      { id: 'чек_1орг_2дог', title: 'Одна организация, два договора' },
       { id: 'чек_старт', title: 'Типовое', variants: Object.entries(BTN_VARS).map(([id, v]) => ({ id, title: v.title })) },
       { id: 'чек_идет', title: 'Идет проверка' },
       { id: 'чек_ошибки', title: 'Найдены ошибки' },
       { id: 'чек_часть', title: 'Часть исправлена' },
       { id: 'чек_свернут', title: 'Журнал свернут' },
-      { id: 'чек_ок', title: 'Ошибок нет' } ] },
+      { id: 'чек_ок', title: 'Ошибок нет' },
+      { id: 'чек_нет_причины', title: 'Причина не найдена' } ] },
     { group: 'Эквайринг', hidden: true, items: [ { id: 'оплаты', title: 'Оплаты (фон)' } ] },   // скрыто с панели, нужно для «Закрыть»
   ],
   links: [
